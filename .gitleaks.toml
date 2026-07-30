@@ -1,0 +1,3 @@
+title = "LocalVault gitleaks"
+[extend]
+useDefault = true

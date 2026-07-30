@@ -2,7 +2,7 @@
 # Policy: DO NOT SKIP ANY STAGE OR GATE
 meta:
   document: cicd-gates
-  plan_version: "1.0.0"
+  plan_version: "1.2.0"
   last_updated: "2026-07-30"
 
 enforcement:

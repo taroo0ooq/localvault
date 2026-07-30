@@ -1,0 +1,21 @@
+name: sast-semgrep
+
+on:
+  pull_request:
+
+jobs:
+  sast-semgrep:
+    name: sast-semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep scan
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --error \
+            --metrics=off \
+            .

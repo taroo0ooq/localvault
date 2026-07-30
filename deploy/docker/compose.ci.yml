@@ -1,0 +1,10 @@
+# Ephemeral CI stack for DAST + E2E (S1)
+services:
+  vault-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.vault-api
+    ports:
+      - "8443:8443"
+    environment:
+      VAULT_LISTEN: "0.0.0.0:8443"

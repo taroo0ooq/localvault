@@ -1,0 +1,103 @@
+# =============================================================================
+# STAGE HANDOVER — S1 Monorepo Bootstrap & CI Skeleton
+# =============================================================================
+handover:
+  stage_id: S1
+  stage_name: Monorepo Bootstrap & CI Skeleton
+  status: COMPLETE
+  completed_at: "2026-07-30T17:50:00-04:00"
+  plan_version: "1.2.0"
+  prepared_by: Grok Build (Stage S1)
+  stakeholder: Tareq Al Ghazzi
+
+  entry_criteria_validation:
+    - criterion: S0 exit all true
+      met: true
+      evidence: docs/handovers/stage-00-handover.yaml + amendments v1.1/v1.2
+
+  exit_criteria_validation:
+    - criterion: monorepo_layout_exists
+      met: true
+      evidence: apps/*, packages/*, deploy/docker, tests/e2e
+    - criterion: workflows_sast_dast_e2e_present
+      met: true
+      evidence: >
+        .github/workflows/ci.yml, sast-codeql.yml, sast-semgrep.yml,
+        secrets-gitleaks.yml, deps.yml, dast-zap.yml, e2e-playwright.yml, release.yml
+    - criterion: branch_protection_documented_or_applied
+      met: true
+      evidence: docs/cicd/branch-protection.md
+    - criterion: pr_issue_templates
+      met: true
+      evidence: .github/pull_request_template.md, ISSUE_TEMPLATE/*
+    - criterion: handover_yaml_written
+      met: true
+      evidence: docs/handovers/stage-01-handover.yaml
+
+  features_delivered_this_stage:
+    - id: F-S1-001
+      name: Monorepo scaffold
+      description: apps (vault-api, web, desktop, mobile, extension), packages (crypto, importers, api-client, shared-types)
+    - id: F-S1-002
+      name: vault-api S1 health service
+      description: GET /healthz and /v1/server-info; unit tests; Docker distroless build
+    - id: F-S1-003
+      name: Strict CI workflows
+      description: lint, typecheck, unit, build, CodeQL, Semgrep, Gitleaks, deps, ZAP, Playwright
+    - id: F-S1-004
+      name: Bug/feature issue templates + PR template + CODEOWNERS
+    - id: F-S1-005
+      name: Package stubs with unit tests
+      description: crypto policy assert, importer header detect, username validation
+
+  forbidden_items_correctly_deferred:
+    - Full vault crypto (S3)
+    - Multiuser register API (S2)
+    - Extension fill (S5)
+    - Mobile autofill (S7)
+
+  tests_this_stage:
+    - type: go_unit
+      result: pass
+      command: go test ./... (apps/vault-api)
+    - type: js_unit
+      result: pass
+      command: npm test (workspace packages)
+    - type: playwright_e2e
+      result: pass
+      details: healthz + server-info against local vault-api
+
+  security_scans:
+    - sast_codeql: workflow present (runs on PR)
+    - sast_semgrep: workflow present
+    - secrets_gitleaks: workflow present
+    - dast_zap: workflow present against compose.ci.yml
+    - note: First full green suite verified on PR CI after push
+
+  plan_cross_reference:
+    stage: S1
+    requirements: [REQ-001, REQ-009, REQ-012, REQ-013, REQ-014]
+    master_plan: docs/plan/00-master-plan.yaml
+    cicd: docs/plan/03-cicd-gates.yaml
+
+  next_stage:
+    id: S2
+    name: Vault API + Docker Host + Multiuser
+    entry_criteria:
+      - This handover COMPLETE
+      - CI workflows green on S1 PR
+    first_tasks:
+      - users table + register/login API
+      - user-scoped isolation tests
+      - device pairing
+      - encrypted item CRUD (ciphertext blobs; client crypto still S3)
+      - DAST + unit green
+    forbidden_in_s2:
+      - Full Argon2id client KDF UI (S3)
+      - Recovery passphrase UX (S3)
+      - Extension/mobile product code
+
+  signoff:
+    no_stage_skipped: true
+    cicd_gates_not_skipped: true
+    ready_for_s2: true
