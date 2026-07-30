@@ -9,7 +9,8 @@ test.describe("web enrollment S3", () => {
   test("username → PIN → recovery → vault item", async ({ page }) => {
     const user = `web_${Date.now().toString(36)}`;
     await page.goto(WEB);
-    await page.getByTestId("base-url").fill(API);
+    // Prefer same-origin (Vite proxies /v1 + /healthz); fall back to API URL.
+    await page.getByTestId("base-url").fill(WEB);
     await page.getByRole("button", { name: "Connect" }).click();
     await page.getByRole("button", { name: /Create account/i }).click();
     await page.getByTestId("enroll-username").fill(user);

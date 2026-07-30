@@ -51,6 +51,8 @@ export function App() {
     if (saved) return saved;
     const env = (import.meta as { env?: { VITE_VAULT_URL?: string } }).env?.VITE_VAULT_URL;
     if (env) return env;
+    // Same-origin + Vite proxy (/healthz, /v1) for Docker Desktop preview & LAN.
+    if (typeof window !== "undefined") return window.location.origin;
     return "http://127.0.0.1:8443";
   });
   const [serverLabel, setServerLabel] = useState("");
