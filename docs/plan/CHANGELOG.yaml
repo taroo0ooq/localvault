@@ -3,6 +3,18 @@ meta:
   document: plan-changelog
 
 entries:
+  - version: "1.2.0"
+    date: "2026-07-30"
+    type: amendment
+    amendment_id: AMD-002
+    summary: >
+      Multiuser isolated vaults on one Docker host (REQ-020). Locked enrollment order:
+      simple username → PIN create/confirm → app-generated recovery passphrase.
+      ADRs 011–012. No shared vaults/org admin in v1.
+    author: grok-build / plan-amendment
+    new_requirements: [REQ-020]
+    updated_requirements: [REQ-011]
+
   - version: "1.1.0"
     date: "2026-07-30"
     type: amendment

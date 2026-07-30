@@ -10,10 +10,10 @@
 meta:
   project_codename: localvault
   project_display_name: LocalVault
-  plan_version: "1.1.0"
-  plan_status: ACTIVE_STAGE_0_AMENDED_v1_1_0
+  plan_version: "1.2.0"
+  plan_status: ACTIVE_STAGE_0_AMENDED_v1_2_0
   created_at: "2026-07-30T17:00:00-04:00"
-  last_reviewed_at: "2026-07-30T17:22:00-04:00"
+  last_reviewed_at: "2026-07-30T17:35:00-04:00"
   governing_rules:
     - DO_NOT_SKIP_ANY_STAGE
     - DO_NOT_COMMIT_WITHOUT_SAST_AND_DAST
@@ -36,7 +36,8 @@ vision:
   success_criteria:
     - Vault runs entirely on user Docker Desktop; no third-party vault cloud
     - PIN (≥6 digits) + biometrics (when available) gate every client unlock
-    - First-run enrollment: create PIN + app-generated recovery passphrase + biometrics if supported
+    - Multiuser local accounts (simple username) with isolated vaults per user
+    - First-run registration: simple username → PIN → app-generated recovery passphrase → biometrics if supported
     - Cross-device Argon2id params stored in vault_meta (consistent KEK derivation)
     - Optional WebAuthn platform + hardware-key unlock (PRF when available)
     - Import credentials from Google Password Manager and Apple Passwords via guided CSV
@@ -46,8 +47,9 @@ vision:
     - Strict GitHub CI/CD: SAST + secrets scan + DAST + Playwright before merge
     - Stage handover YAML after every stage
   non_goals:
-    - Multi-tenant SaaS vault hosting
-    - Team sharing / org admin (v1)
+    - Multi-tenant SaaS vault hosting (public cloud)
+    - Org admin / SCIM / SSO (v1)
+    - Shared folders between users (v1) — multiuser is isolated vaults only
     - P2P multiplayer-style sync without Docker host
     - Proprietary crypto (use audited libraries only)
 
@@ -162,11 +164,14 @@ requirements:
   - id: REQ-011
     title: First-login enrollment
     priority: P0
-    description: Register vault, create PIN, enroll biometrics if supported
+    description: >
+      Register user on vault host: simple username → PIN create/confirm →
+      app-generated recovery passphrase (mandatory, after PIN only) → biometrics if supported
     stages: [S3, S6, S7]
     acceptance:
-      - Onboarding wizard: vault URL/pair → PIN create/confirm → biometric enroll
-      - Recovery: show one-time recovery key (user must store offline)
+      - Onboarding: pair host → username → PIN → recovery passphrase confirm → biometric
+      - Recovery passphrase never generated before username and PIN
+      - Recovery shown once; user must confirm offline storage
 
   - id: REQ-012
     title: Strict CI/CD with SAST and DAST
@@ -255,6 +260,20 @@ requirements:
       - Encrypt-then-upsert
       - In-app export guide
 
+
+  - id: REQ-020
+    title: Multiuser accounts on local vault host
+    priority: P0
+    description: >
+      Multiple independent users per Docker host; isolated encrypted vaults;
+      simple username registration; sessions scoped to user_id.
+    stages: [S2, S3, S6, S7]
+    acceptance:
+      - Unique simple username per host
+      - User A cannot access User B ciphertext items
+      - Register/login flows include username
+      - Device pairing bound to user
+
 # -----------------------------------------------------------------------------
 # 3. Architecture (high level)
 # -----------------------------------------------------------------------------
@@ -332,16 +351,18 @@ architecture:
 
   data_model_v1:
     tables:
+      users:
+        - id, username, username_normalized, display_name, created_at, revoked_at
       devices:
-        - id, name, public_key, created_at, last_seen, revoked
+        - id, user_id, name, public_key, created_at, last_seen, revoked
       sessions:
-        - id, device_id, token_hash, expires_at, created_at
+        - id, user_id, device_id, token_hash, expires_at, created_at
       vault_meta:
-        - id, kdf_params_json, wrapped_dek, version, updated_at
+        - user_id, kdf_params_json, wrapped_dek_pin, wrapped_dek_recovery, version, updated_at
       items_ciphertext:
-        - id, ciphertext, nonce, aad, updated_at, deleted_at
+        - id, user_id, ciphertext, nonce, aad, updated_at, deleted_at
       audit_events:
-        - id, device_id, event_type, metadata_json, created_at
+        - id, user_id, device_id, event_type, metadata_json, created_at
     client_only:
       - plaintext items only in memory while unlocked
       - OS keystore holds biometric-wrapped unlock material
@@ -605,7 +626,7 @@ roadmap:
         - Unit tests + CodeQL + Semgrep green
         - ZAP baseline against API green
         - S2 handover YAML
-      requirements: [REQ-001, REQ-009, REQ-012]
+      requirements: [REQ-001, REQ-009, REQ-012, REQ-020]
       estimated_effort: multi-day
 
     - id: S3
@@ -622,7 +643,7 @@ roadmap:
         - Playwright e2e for enrollment + CRUD
         - Full SAST/DAST green
         - S3 handover YAML
-      requirements: [REQ-006, REQ-010, REQ-011, REQ-002]
+      requirements: [REQ-006, REQ-010, REQ-011, REQ-002, REQ-015, REQ-016, REQ-017, REQ-018, REQ-019, REQ-020]
       estimated_effort: multi-day
 
     - id: S4

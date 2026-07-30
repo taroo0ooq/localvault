@@ -1,7 +1,7 @@
 # LocalVault — Security Model
 meta:
   document: security-model
-  plan_version: "1.1.0"
+  plan_version: "1.2.0"
   last_updated: "2026-07-30"
 
 security_objectives:
@@ -19,14 +19,19 @@ trust_boundaries:
   - TB5: Browser content script (must not exfiltrate; lock on idle)
 
 authentication:
+  multiuser:
+    - Multiple local users per Docker host; isolated vaults
+    - Simple username (not email) unique case-insensitive
+    - Sessions and devices bound to user_id
   first_run:
+    - Create simple username (check availability)
     - Create PIN min 6 digits (recommend 8+; allow unlock passphrase)
     - Confirm PIN
-    - App generates recovery passphrase (diceware/CSPRNG) — display once, user must confirm saved
-    - Wrap DEK under PIN-KEK and Recovery-KEK (higher Argon2id cost for recovery)
-    - Enroll platform biometrics if supported
+    - ONLY THEN: app generates recovery passphrase (diceware/CSPRNG) — display once, confirm saved
+    - Wrap DEK under PIN-KEK and Recovery-KEK for this user_id
+    - Enroll platform biometrics if supported (per user device)
     - Optional WebAuthn hardware key (prefer PRF for DEK wrap)
-    - Optional guided import (Google / Apple CSV)
+    - Optional guided import (Google / Apple CSV) into this user's vault only
   subsequent_unlock:
     - Prefer WebAuthn PRF (hardware key / capable passkey) → unwrap DEK
     - Else platform biometrics → unwrap local unlock secret → DEK
