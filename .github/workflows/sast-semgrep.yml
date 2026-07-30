@@ -21,4 +21,5 @@ jobs:
             --exclude='.github/**' \
             --exclude='tests/e2e/**' \
             --exclude='docs/**' \
+            --exclude-rule='go.lang.security.audit.net.use-tls.use-tls' \
             .

@@ -16,9 +16,8 @@ func main() {
 	mux.HandleFunc("/v1/server-info", health.ServerInfoHandler)
 
 	log.Printf("localvault-api listening on %s (S1 scaffold)", addr)
-	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
-	// TLS terminates at Cloudflare/ngrok edge (S4); process listens on Docker network.
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	// TLS terminates at Cloudflare/ngrok (S4). Local Docker uses plain HTTP.
+	if err := http.ListenAndServe(addr, mux); err != nil { // nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 		log.Fatal(err)
 	}
 }
