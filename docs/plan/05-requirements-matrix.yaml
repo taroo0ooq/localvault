@@ -1,7 +1,7 @@
 # LocalVault — Requirements Traceability Matrix
 meta:
   document: requirements-matrix
-  plan_version: "1.1.0"
+  plan_version: "1.2.0"
   last_updated: "2026-07-30"
 
 matrix:
@@ -78,10 +78,11 @@ matrix:
     status: planned
 
   - req: REQ-011
-    title: First-login enrollment
+    title: Enrollment username → PIN → recovery passphrase
     stages: [S3, S6, S7]
     components: [web, desktop, mobile]
-    tests: [playwright-onboarding]
+    tests: [playwright-onboarding-order]
+    notes: Recovery only after username + PIN confirmed
     status: planned
 
   - req: REQ-012
@@ -139,3 +140,15 @@ matrix:
     components: [packages/importers, web, desktop, mobile]
     tests: [unit-csv-apple, playwright-import-apple]
     status: planned
+
+  - req: REQ-020
+    title: Multiuser accounts on local vault host
+    stages: [S2, S3, S6, S7]
+    components: [vault-api, web, desktop, mobile]
+    tests: [unit-user-isolation, playwright-two-users]
+    status: planned
+
+  - req: REQ-011
+    title: Enrollment order username → PIN → recovery
+    note: Recovery passphrase MUST be generated only after username and PIN
+    status: planned_updated_v1_2_0

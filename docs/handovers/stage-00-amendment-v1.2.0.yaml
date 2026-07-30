@@ -1,0 +1,58 @@
+# Handover addendum — Plan amendment AMD-002 (v1.2.0)
+handover_addendum:
+  id: S0-AMD-002
+  plan_version: "1.2.0"
+  status: COMPLETE
+  completed_at: "2026-07-30T17:40:00-04:00"
+  parent_stage: S0
+  summary: >
+    Added multiuser support (isolated vaults per simple username on one Docker host)
+    and locked enrollment order: username → PIN → app-generated recovery passphrase.
+
+  changes:
+    - REQ-020 Multiuser accounts on local vault host
+    - REQ-011 updated: enrollment order username → PIN → recovery
+    - REQ-016 clarified: recovery only after PIN
+    - ADRs 011–012
+    - Interactive enrollment demo in plan viewer
+    - S2 exit criteria include multiuser isolation
+
+  multiuser_scope_v1:
+    in:
+      - Multiple usernames per host
+      - Isolated DEK and items per user
+      - Login with username then unlock
+    out:
+      - Shared folders
+      - Org admin / SCIM / SSO
+
+  enrollment_order:
+    - simple_username
+    - pin_create_confirm
+    - app_generated_recovery_passphrase
+    - biometrics_optional
+    - hardware_key_optional
+    - import_optional
+
+  implementation_stage:
+    multiuser_api: S2
+    registration_ui: S3
+    monorepo_ci: S1
+
+  files:
+    - docs/plan/00-master-plan.yaml
+    - docs/plan/01-roadmap.yaml
+    - docs/plan/02-architecture.yaml
+    - docs/plan/04-security-model.yaml
+    - docs/plan/05-requirements-matrix.yaml
+    - docs/plan/07-plan-amendment-v1.2.0.yaml
+    - docs/plan/CHANGELOG.yaml
+    - src/plan-data.ts
+    - src/components/PlanApp.tsx
+
+  signoff:
+    plan_cross_referenced: true
+    recovery_only_after_username_and_pin: true
+    multiuser_isolated_vaults: true
+    no_stage_skipped: true
+    ready_for_s1: true

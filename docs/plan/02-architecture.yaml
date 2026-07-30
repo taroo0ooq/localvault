@@ -1,7 +1,7 @@
 # LocalVault — Architecture Detail
 meta:
   document: architecture
-  plan_version: "1.1.0"
+  plan_version: "1.2.0"
   last_updated: "2026-07-30"
 
 system_context:
@@ -81,15 +81,16 @@ crypto_design:
     - Client decrypts item list for UI
     - Lock wipes DEK from memory
   first_run:
-    - Generate DEK (CSPRNG)
+    - User creates simple username (unique on host)
     - User creates PIN (≥6 digits) + confirm (recommend 8+ or unlock passphrase)
-    - App generates recovery passphrase (diceware 8 words default) — confirm saved
+    - ONLY AFTER username + PIN: app generates recovery passphrase (diceware 8 words) — confirm saved
+    - Generate DEK (CSPRNG) for this user
     - Derive KEK_pin via Argon2id(PIN, salt, pin_profile_params)
     - Derive KEK_recovery via Argon2id(recovery, salt2, recovery_high params)
-    - Store wrapped_DEK_pin, wrapped_DEK_recovery, kdf_params on server (ciphertext only)
-    - Offer platform biometric enrollment (device-local unlock secret)
+    - Store user row + wrapped_DEK_pin, wrapped_DEK_recovery, kdf_params (per user_id)
+    - Offer platform biometric enrollment (device-local unlock secret for this user)
     - Optional WebAuthn hardware key with PRF wrap when available
-    - Optional Google/Apple CSV import (client parse → encrypt → upsert)
+    - Optional Google/Apple CSV import into this user's vault only
   item_encryption:
     - Each item JSON → AES-256-GCM(DEK, nonce, aad=item_id||version)
     - Server stores opaque blob
@@ -195,3 +196,15 @@ adrs:
     status: accepted
     decision: Prefer PRF; assertion-only is not a vault key; PIN fallback always
     rationale: Matches password-manager best practice (e.g. Bitwarden PRF path)
+
+  - id: ADR-011
+    title: Multiuser isolated vaults
+    status: accepted
+    decision: Many users per host; each has own DEK and items; no shared vaults in v1
+    rationale: Household shared Docker host without org complexity
+
+  - id: ADR-012
+    title: Enrollment order username → PIN → recovery
+    status: accepted
+    decision: Recovery passphrase generated only after username accepted and PIN confirmed
+    rationale: Stakeholder-mandated sequence; prevents orphan recovery material

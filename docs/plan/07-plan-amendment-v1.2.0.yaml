@@ -1,0 +1,174 @@
+# =============================================================================
+# PLAN AMENDMENT v1.2.0
+# Multiuser support + locked enrollment order (username → PIN → recovery passphrase)
+# Date: 2026-07-30
+# =============================================================================
+meta:
+  amendment_id: AMD-002
+  from_plan_version: "1.1.0"
+  to_plan_version: "1.2.0"
+  status: ACCEPTED
+  amended_at: "2026-07-30T17:35:00-04:00"
+  cross_reference: docs/plan/00-master-plan.yaml
+  rationale: >
+    Stakeholder requested multiuser support on the local Docker-hosted vault, and
+    explicit enrollment/registration order: simple username, then PIN, then
+    app-generated recovery passphrase (must not run before PIN or without username).
+
+# -----------------------------------------------------------------------------
+# Scope of multiuser (v1)
+# -----------------------------------------------------------------------------
+multiuser_model:
+  definition: >
+    Multiple independent user accounts on one LocalVault Docker host. Each user
+    has an isolated encrypted vault (own DEK, own items). Users do not see each
+    other's items. Not multi-tenant SaaS; not org admin RBAC.
+  in_scope_v1:
+    - Register many users on one host (simple username)
+    - Per-user vault_meta, items, devices, sessions
+    - Login picks username then unlocks with PIN / biometric / WebAuthn / recovery
+    - Device pairing scoped to a user account
+    - Optional "switch user" on shared household devices
+  out_of_scope_v1:
+    - Shared folders / item sharing between users
+    - Org admin, SCIM, SSO
+    - Multi-tenant public cloud hosting
+  future_candidates:
+    - Shared vaults with explicit invite (post-v1)
+
+# -----------------------------------------------------------------------------
+# New requirement
+# -----------------------------------------------------------------------------
+new_requirements:
+  - id: REQ-020
+    title: Multiuser accounts on local vault host
+    priority: P0
+    stages: [S2, S3, S6, S7]
+    description: >
+      Vault API and clients support multiple registered users per Docker host.
+      Each user has isolated ciphertext vault. Username is simple local identifier
+      (not required to be email).
+    acceptance:
+      - POST register with username + enrollment crypto material
+      - Username unique (case-insensitive), 3–32 chars [a-z0-9_.-]
+      - Login requires username then unlock ceremony
+      - User A cannot list/decrypt User B items
+      - Playwright: register two users, verify isolation
+      - Device sessions bound to user_id
+
+# -----------------------------------------------------------------------------
+# Enrollment / registration order (LOCKED — do not reorder)
+# -----------------------------------------------------------------------------
+enrollment_order_locked:
+  rule: STRICT_SEQUENCE
+  steps:
+    - id: E0
+      name: Choose host
+      detail: Connect/pair to Docker vault host (LAN or tunnel)
+    - id: E1
+      name: Create simple username
+      detail: >
+        User enters simple username. Client checks availability via API.
+        Rules: 3–32 chars, lowercase a-z, digits, underscore, hyphen, period.
+        No email required. Display name optional.
+      before_recovery: true
+    - id: E2
+      name: Create PIN code
+      detail: >
+        Min 6 digits (recommend 8+). Confirm PIN. PIN is for daily unlock;
+        not the recovery secret.
+      before_recovery: true
+    - id: E3
+      name: Generate recovery passphrase
+      detail: >
+        ONLY after username is accepted AND PIN is confirmed: app generates
+        recovery passphrase (CSPRNG diceware). Display once. User must confirm
+        offline save (re-type or checkbox gate). Recovery wraps DEK under
+        separate KEK. NEVER generate recovery before PIN or without username.
+      depends_on: [E1, E2]
+      mandatory: true
+    - id: E4
+      name: Wrap DEK and persist user vault
+      detail: Create user row + vault_meta (wrapped DEKs + kdf_params) for this user_id
+    - id: E5
+      name: Enroll platform biometrics
+      detail: Optional, per device, bound to this user
+    - id: E6
+      name: Optional hardware key
+      detail: WebAuthn PRF preferred, bound to this user
+    - id: E7
+      name: Optional import
+      detail: Google/Apple CSV into this user's vault only
+    - id: E8
+      name: Finish
+      detail: Session for this user; vault locked until unlock
+
+  forbidden:
+    - Generating recovery passphrase before username
+    - Generating recovery passphrase before PIN create+confirm
+    - Sharing one recovery passphrase across users
+    - Storing recovery passphrase plaintext on server
+
+# -----------------------------------------------------------------------------
+# Data model additions
+# -----------------------------------------------------------------------------
+data_model:
+  users:
+    - id (uuid)
+    - username (unique, citext)
+    - username_normalized
+    - display_name (optional)
+    - created_at
+    - revoked_at (nullable)
+  vault_meta:
+    - user_id (FK, unique)
+    - kdf_params_json
+    - wrapped_dek_pin
+    - wrapped_dek_recovery
+    - wrapped_dek_webauthn_json (optional list)
+    - version
+  devices:
+    - id, user_id, name, public_key, created_at, revoked
+  sessions:
+    - id, user_id, device_id, token_hash, expires_at
+  items_ciphertext:
+    - id, user_id, ciphertext, nonce, aad, updated_at, deleted_at
+
+api_additions:
+  - POST /v1/users/register/start   # username availability + server info
+  - POST /v1/users/register/finish  # username + public device key + vault_meta ciphertext
+  - POST /v1/sessions               # username + device auth → session
+  - GET  /v1/users/check?username=
+  isolation: all vault item routes require session.user_id scope
+
+# -----------------------------------------------------------------------------
+# ADR
+# -----------------------------------------------------------------------------
+new_adrs:
+  - id: ADR-011
+    title: Multiuser = isolated vaults per local username
+    status: accepted
+    decision: >
+      One Docker host, many users, fully isolated encrypted vaults. No shared items in v1.
+    rationale: Household/shared PC use without org complexity
+
+  - id: ADR-012
+    title: Enrollment order username → PIN → recovery passphrase
+    status: accepted
+    decision: >
+      Recovery passphrase is generated only after simple username is accepted and PIN
+      is created and confirmed. Order is mandatory in all clients.
+    rationale: Stakeholder requirement; avoids orphan recovery material; clear UX
+
+# -----------------------------------------------------------------------------
+# Stage impact
+# -----------------------------------------------------------------------------
+stage_impact:
+  S2:
+    - users table, register/login API, user-scoped data isolation tests
+  S3:
+    - Registration UI: username → PIN → recovery (strict)
+    - Multiuser switch / login username field
+    - Isolation e2e
+  S6_S7:
+    - Same registration order on desktop/mobile

@@ -1,7 +1,7 @@
 # LocalVault — Executable Roadmap (cross-check against 00-master-plan.yaml)
 meta:
   document: roadmap
-  plan_version: "1.1.0"
+  plan_version: "1.2.0"
   current_stage: S0
   last_updated: "2026-07-30"
 
@@ -79,6 +79,8 @@ stage_gates:
     entry: [S1_exit_all_true]
     exit:
       - vault_api_health
+      - multiuser_register_login
+      - user_scoped_isolation
       - device_pairing
       - encrypted_item_crud
       - docker_image_ci
@@ -91,9 +93,11 @@ stage_gates:
     exit:
       - crypto_package_kat
       - argon2id_profiles_cross_device
+      - username_registration
       - pin_enrollment
-      - app_generated_recovery_passphrase
+      - app_generated_recovery_passphrase_after_pin
       - recovery_flow
+      - multiuser_isolation_e2e
       - biometric_enroll_if_available
       - webauthn_platform_enroll
       - optional_hardware_key_register
