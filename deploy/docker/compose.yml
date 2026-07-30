@@ -1,16 +1,65 @@
+# LocalVault host stack + tunnel profiles (S4, REQ-008, ADR-004)
+#
+# LAN only:
+#   docker compose -f deploy/docker/compose.yml up -d --build
+#
+# Cloudflare Tunnel (primary):
+#   export CLOUDFLARE_TUNNEL_TOKEN=...   # from Zero Trust dashboard
+#   export VAULT_TUNNEL_MODE=1
+#   export VAULT_PUBLIC_BASE_URL=https://vault.example.com
+#   docker compose -f deploy/docker/compose.yml --profile cloudflare up -d --build
+#
+# ngrok (alternate):
+#   export NGROK_AUTHTOKEN=...
+#   export VAULT_TUNNEL_MODE=1
+#   docker compose -f deploy/docker/compose.yml --profile ngrok up -d --build
+#
+# Secrets: never commit tokens. Use .env (see deploy/docker/.env.example).
+
 services:
   vault-api:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile.vault-api
     ports:
-      - "8443:8443"
+      # Prefer loopback publish when tunneling (public path is the tunnel edge only).
+      - "${VAULT_PUBLISH:-127.0.0.1:8443}:8443"
     environment:
       VAULT_LISTEN: "0.0.0.0:8443"
       VAULT_DB: "/data/vault.db"
+      VAULT_TUNNEL_MODE: "${VAULT_TUNNEL_MODE:-0}"
+      VAULT_PUBLIC_BASE_URL: "${VAULT_PUBLIC_BASE_URL:-}"
     volumes:
       - vault_data:/data
     restart: unless-stopped
+    networks:
+      - vault_net
+
+  cloudflared:
+    image: cloudflare/cloudflared:2025.2.1
+    profiles: ["cloudflare"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - vault-api
+    networks:
+      - vault_net
+
+  ngrok:
+    image: ngrok/ngrok:3.22.1-alpine
+    profiles: ["ngrok"]
+    restart: unless-stopped
+    command: ["http", "--log=stdout", "vault-api:8443"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    depends_on:
+      - vault-api
+    networks:
+      - vault_net
 
 volumes:
   vault_data:
+
+networks:
+  vault_net:
+    driver: bridge

@@ -48,6 +48,8 @@ jobs:
           go-version: "1.25.x"
       - run: npm ci
       - run: npm test
+      - name: Validate tunnel compose (S4)
+        run: sh deploy/scripts/validate-compose.sh
       - name: Go unit tests
         working-directory: apps/vault-api
         run: go test ./...
