@@ -67,7 +67,8 @@ test.describe("multiuser account selection (#23)", () => {
 
     // Re-login as user1
     await page.getByTestId(`account-${users[0]}`).click();
-    await expect(page.getByText(`@${users[0]}`)).toBeVisible();
+    await expect(page.getByTestId("unlock-pin")).toBeVisible();
+    await expect(page.getByRole("banner")).toContainText(`@${users[0]}`);
     await page.getByTestId("unlock-pin").fill("123456");
     await page.getByRole("button", { name: /^Unlock$/i }).click();
     await expect(page.getByRole("heading", { name: "Passwords" })).toBeVisible({
