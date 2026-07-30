@@ -29,7 +29,8 @@ handover:
     - criterion: docker_image_ci
       met: true
     - criterion: unit_sast_dast_green
-      met: pending_pr_ci
+      met: true
+      evidence: "PR #13 all checks success"
     - criterion: handover_yaml_written
       met: true
 
@@ -49,6 +50,11 @@ handover:
     id: S3
     name: Web Client + Enrollment + Import
     ready_when: this_handover_complete_and_ci_green
+
+  ci_final_green:
+    pr: 13
+    commit: ca79e3c
+    checks: [ci, sast-codeql, sast-semgrep, secrets-gitleaks, dependency-scan, dast-zap, e2e-playwright]
 
   signoff:
     no_stage_skipped: true
