@@ -1,0 +1,11 @@
+[package]
+name = "localvault-desktop-core"
+version = "0.6.0"
+edition = "2021"
+description = "Platform-agnostic desktop core (biometrics status model) — S6"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[lib]
+path = "src/lib.rs"

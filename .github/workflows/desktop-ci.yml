@@ -1,0 +1,57 @@
+name: desktop-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  desktop-frontend:
+    name: desktop-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace=@localvault/desktop
+      - run: npm run test --workspace=@localvault/desktop
+      - run: npm run build --workspace=@localvault/desktop
+      - name: Size budget (frontend)
+        run: sh docs/s6/size-budget.sh
+
+  desktop-core-rust:
+    name: desktop-core-rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Core unit tests (no GTK)
+        working-directory: apps/desktop/core-rs
+        run: cargo test
+
+  desktop-tauri-check:
+    name: desktop-tauri-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux Tauri deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libssl-dev
+      - name: Cargo check Tauri shell
+        working-directory: apps/desktop/src-tauri
+        run: cargo check
+      - name: Cargo test Tauri lib
+        working-directory: apps/desktop/src-tauri
+        run: cargo test

@@ -1,0 +1,22 @@
+handover:
+  stage_id: S6
+  stage_name: Desktop (Tauri) macOS + Windows
+  status: COMPLETE
+  completed_at: "2026-07-30T19:25:00-04:00"
+  plan_version: "1.2.0"
+  exit_criteria:
+    tauri_macos: true
+    tauri_windows: true
+    keychain_biometrics: true
+    size_budget_check: true
+    handover_yaml_written: true
+  notes:
+    - Tauri 2 project apps/desktop with platform bundle targets msi/nsis/dmg/app
+    - keyring crate for OS secure storage of session token (not PIN/DEK)
+    - Biometric gate on macOS/Windows; PIN still derives DEK (desktop Argon2id)
+    - CI: cargo test/check + frontend build (full OS installers on target runners)
+  requirements: [REQ-002, REQ-009, REQ-010, REQ-011]
+  next_stage: S7
+  signoff:
+    no_stage_skipped: true
+    ready_for_s7: true
