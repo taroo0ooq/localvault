@@ -1,0 +1,170 @@
+# LocalVault — Architecture Detail
+meta:
+  document: architecture
+  plan_version: "1.0.0"
+  last_updated: "2026-07-30"
+
+system_context:
+  actors:
+    - owner_user
+    - browser_extension
+    - mobile_os_autofill_framework
+    - tunnel_provider_edge
+  systems:
+    - docker_desktop_host
+    - vault_api_container
+    - tunnel_agent_container
+    - client_apps
+
+containers:
+  - id: C1
+    name: vault-api
+    technology: Go + SQLite
+    interfaces:
+      - REST HTTPS /v1/*
+      - health /healthz
+    notes: No plaintext secrets in DB
+
+  - id: C2
+    name: tunnel-agent
+    technology: cloudflared | ngrok
+    interfaces:
+      - outbound only to provider edge
+      - local reverse to vault-api:8443
+
+  - id: C3
+    name: web-pwa
+    technology: React + TS
+    notes: Can be served statically from CDN or local nginx; talks only to vault-api
+
+  - id: C4
+    name: browser-extension
+    technology: MV3 TS
+    notes: Separate session lock; uses same API client package
+
+  - id: C5
+    name: desktop-shell
+    technology: Tauri 2
+    notes: Embeds web UI; OS biometrics + keychain
+
+  - id: C6
+    name: mobile-app
+    technology: Flutter
+    notes: Includes OS autofill extension targets
+
+deployment_docker_desktop:
+  compose_services:
+    vault-api:
+      build: apps/vault-api
+      ports: ["8443:8443"]  # bind preference: localhost only when tunnel used
+      volumes: ["vault-data:/data"]
+      environment:
+        - VAULT_DATA_DIR=/data
+        - TLS_MODE=internal
+    cloudflared:
+      image: cloudflare/cloudflared
+      profiles: [cloudflare]
+      depends_on: [vault-api]
+    ngrok:
+      image: ngrok/ngrok
+      profiles: [ngrok]
+      depends_on: [vault-api]
+  volumes:
+    vault-data:
+      driver: local
+
+crypto_design:
+  unlock_flow:
+    - User enters PIN or passes biometric
+    - Client derives/unwraps KEK
+    - Client unwraps DEK into process memory
+    - Client decrypts item list for UI
+    - Lock wipes DEK from memory
+  first_run:
+    - Generate DEK (CSPRNG)
+    - User creates PIN (≥6 digits) + confirm
+    - Derive KEK via Argon2id(PIN, salt, params)
+    - Store wrapped_DEK + kdf_params on server (ciphertext only)
+    - Show recovery key (encodes ability to re-wrap DEK) — user must confirm saved
+    - Offer biometric enrollment: store platform-protected unlock secret
+  item_encryption:
+    - Each item JSON → AES-256-GCM(DEK, nonce, aad=item_id||version)
+    - Server stores opaque blob
+
+api_surface_v1:
+  public_unauth:
+    - GET /healthz
+    - GET /v1/server-info  # version, kdf recommended params, no secrets
+  device:
+    - POST /v1/devices/pair/start
+    - POST /v1/devices/pair/finish
+    - POST /v1/sessions
+    - DELETE /v1/sessions/current
+  vault:
+    - GET /v1/vault/meta
+    - PUT /v1/vault/meta
+    - GET /v1/items
+    - PUT /v1/items/{id}
+    - DELETE /v1/items/{id}
+  audit:
+    - GET /v1/audit  # metadata only
+
+client_modules:
+  packages_crypto:
+    - generatePassword(policy)
+    - deriveKek(pin, salt, params)
+    - wrapDek / unwrapDek
+    - encryptItem / decryptItem
+  packages_api_client:
+    - typed fetch with session header
+    - retry with backoff on 429
+  packages_ui:
+    - vault list, item form, generator, lock screen, onboarding
+
+platform_autofill:
+  android:
+    component: AutofillService
+    flow: system request → unlock if needed → return Dataset
+  ios:
+    component: ASCredentialProviderViewController
+    flow: system request → biometric/PIN → credential identities
+  limitation_note: >
+    Filling arbitrary mobile apps is ONLY possible via these OS services.
+    Browser extensions cannot autofill native apps.
+
+adrs:
+  - id: ADR-001
+    title: Go for vault API
+    status: accepted
+    decision: Use Go static binary for vault API
+    rationale: Small image, excellent stdlib, easy security review, distroless
+
+  - id: ADR-002
+    title: Tauri for desktop
+    status: accepted
+    decision: Tauri 2 instead of Electron
+    rationale: Lightweight footprint requirement
+
+  - id: ADR-003
+    title: Flutter for mobile
+    status: accepted
+    decision: Flutter for Android + iOS + autofill plugins
+    rationale: One codebase; mature platform views for autofill extensions
+
+  - id: ADR-004
+    title: Cloudflare primary tunnel
+    status: accepted
+    decision: cloudflared primary; ngrok alternate profile
+    rationale: Stable always-on tunnels; optional Access policies
+
+  - id: ADR-005
+    title: Zero-knowledge vault blobs
+    status: accepted
+    decision: Client-side encryption; server stores ciphertext only
+    rationale: Docker host compromise must not yield plaintext passwords
+
+  - id: ADR-006
+    title: Monorepo
+    status: accepted
+    decision: Single private monorepo with apps/* and packages/*
+    rationale: Shared crypto/types; unified CI gates

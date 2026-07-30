@@ -1,0 +1,100 @@
+# LocalVault — Security Model
+meta:
+  document: security-model
+  plan_version: "1.0.0"
+  last_updated: "2026-07-30"
+
+security_objectives:
+  - Confidentiality of credentials even if Docker host disk is copied
+  - Integrity of vault items (AEAD)
+  - Availability of local vault under user control
+  - Authenticity of client devices
+  - Minimal trust in tunnel provider (TLS + app auth; provider sees only ciphertext traffic)
+
+trust_boundaries:
+  - TB1: Client process memory (holds DEK while unlocked) — highest sensitivity
+  - TB2: OS keystore / Secure Enclave / TPM / Windows Hello
+  - TB3: Vault API process (ciphertext + session token hashes only)
+  - TB4: Tunnel provider edge (encrypted TLS streams)
+  - TB5: Browser content script (must not exfiltrate; lock on idle)
+
+authentication:
+  first_run:
+    - Create PIN min 6 digits (recommend 8+; allow alphanumeric passphrase later)
+    - Confirm PIN
+    - Generate recovery key (display once)
+    - Enroll biometrics if platform supports
+  subsequent_unlock:
+    - Prefer biometrics → unwrap local unlock secret → DEK
+    - Else PIN → Argon2id → KEK → DEK
+  remote_api:
+    - Device paired via QR/code showing server fingerprint
+    - Sessions short-lived; refresh rotation
+    - Optional Cloudflare Access in front of tunnel
+
+authorization:
+  - Only paired non-revoked devices
+  - Per-session capability: full vault ops when unlocked client presents valid session
+  - Server cannot decrypt; authorization is for blob access only
+
+encryption:
+  at_rest_server: ciphertext blobs + optional SQLCipher
+  at_rest_client: OS keystore for unlock material; no plaintext vault on disk while locked
+  in_transit: TLS 1.3 preferred
+  algorithms:
+    kdf: Argon2id
+    aead: AES-256-GCM
+    hashing_tokens: SHA-256 or blake2b for token digests
+
+pin_policy:
+  min_length: 6
+  max_attempts_before_backoff: 5
+  backoff: exponential
+  wipe_policy: optional future — factory reset after N failures (user setting; default off)
+
+biometric_policy:
+  - Biometrics unlock local key material only
+  - Biometrics alone never sent to server
+  - If biometric changes (OS invalidates), fall back to PIN
+  - Enrollment optional but recommended
+
+extension_security:
+  - Idle lock default 5 minutes (configurable)
+  - Autofill requires unlocked vault
+  - Prefer user gesture for fill
+  - Content Security Policy strict
+  - No remote code execution
+
+mobile_autofill_security:
+  - System picker UI; app does not inject into other apps' processes
+  - Unlock check before returning password to OS API
+  - Minimal Android/iOS permissions
+
+logging_and_privacy:
+  - Never log passwords, PINs, DEK, KEK, recovery keys
+  - Audit: timestamps, device id, event type only
+  - No third-party analytics in v1
+
+threat_scenarios:
+  - id: T1
+    name: Stolen laptop with locked vault
+    mitigation: OS disk encryption + Argon2id + AEAD; attacker has ciphertext only
+  - id: T2
+    name: Compromised Docker volume dump
+    mitigation: zero-knowledge blobs; still recommend host disk encryption
+  - id: T3
+    name: Malicious website
+    mitigation: extension fill only matching domain; no silent exfil of all vault
+  - id: T4
+    name: Tunnel URL leaked
+    mitigation: device auth + rate limits + optional Cloudflare Access
+  - id: T5
+    name: Phishing fake vault UI
+    mitigation: show server fingerprint on pair; certificate awareness
+
+secure_sdlc:
+  - Threat model update each stage handover
+  - SAST + DAST mandatory
+  - Dependency pinning + OSV
+  - Secrets scanning
+  - Security review checklist on crypto/auth PRs

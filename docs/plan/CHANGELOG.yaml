@@ -1,0 +1,10 @@
+# Plan changelog — every plan amendment must append here
+meta:
+  document: plan-changelog
+
+entries:
+  - version: "1.0.0"
+    date: "2026-07-30"
+    type: initial
+    summary: Initial master plan, architecture, CI/CD gates, security model, roadmap, requirements matrix for LocalVault.
+    author: grok-build / stage-S0
