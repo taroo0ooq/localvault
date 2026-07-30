@@ -1,4 +1,3 @@
-# Local development stack (Docker Desktop)
 services:
   vault-api:
     build:
@@ -8,4 +7,10 @@ services:
       - "8443:8443"
     environment:
       VAULT_LISTEN: "0.0.0.0:8443"
+      VAULT_DB: "/data/vault.db"
+    volumes:
+      - vault_data:/data
     restart: unless-stopped
+
+volumes:
+  vault_data:
