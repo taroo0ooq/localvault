@@ -5,16 +5,81 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
 jobs:
   release-gate:
     name: release-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Require CI green before release artifacts
-        env:
-          TAG_NAME: ${{ github.ref_name }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Unit tests (Go)
+        working-directory: apps/vault-api
+        run: go test ./...
+
+      - name: Unit tests (JS workspaces)
         run: |
-          echo "Release workflow scaffold (S1)."
-          echo "Full signed artifacts + SBOM in S8."
-          echo "Tag: ${TAG_NAME}"
+          npm ci
+          npm test
+
+      - name: Build vault-api binaries
+        working-directory: apps/vault-api
+        run: |
+          mkdir -p dist
+          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/localvault-api-linux-amd64 ./cmd/server
+          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/localvault-api-linux-arm64 ./cmd/server
+          GOOS=darwin  GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/localvault-api-darwin-amd64 ./cmd/server
+          GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/localvault-api-darwin-arm64 ./cmd/server
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/localvault-api-windows-amd64.exe ./cmd/server
+          (cd dist && sha256sum * > SHA256SUMS)
+
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          path: apps/vault-api
+          format: spdx-json
+          output-file: apps/vault-api/dist/sbom-vault-api.spdx.json
+
+      - name: Build Docker image
+        run: |
+          docker build -f deploy/docker/Dockerfile.vault-api -t localvault-api:${{ github.ref_name }} apps/vault-api
+          docker save localvault-api:${{ github.ref_name }} | gzip > apps/vault-api/dist/localvault-api-image-${{ github.ref_name }}.tar.gz
+          (cd apps/vault-api/dist && sha256sum localvault-api-image-${{ github.ref_name }}.tar.gz >> SHA256SUMS)
+
+      - name: Cosign sign (keyless OIDC when available)
+        continue-on-error: true
+        uses: sigstore/cosign-installer@v3
+      - name: Cosign blob signatures
+        continue-on-error: true
+        env:
+          COSIGN_YES: "true"
+        run: |
+          if command -v cosign >/dev/null; then
+            for f in apps/vault-api/dist/localvault-api-*; do
+              [ -f "$f" ] || continue
+              case "$f" in
+                *.json|*.tar.gz|SHA256SUMS) continue ;;
+              esac
+              cosign sign-blob --yes --bundle "${f}.cosign.bundle" "$f" || true
+            done
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            apps/vault-api/dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

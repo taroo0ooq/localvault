@@ -1,0 +1,50 @@
+name: dast-zap-full
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 4 * * *"
+  push:
+    branches: [main, develop]
+    tags: ["v*"]
+
+jobs:
+  dast-zap-full:
+    name: dast-zap-full
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start vault-api (compose.ci)
+        run: |
+          docker compose -f deploy/docker/compose.ci.yml up -d --build
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8443/healthz; then
+              echo "healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f deploy/docker/compose.ci.yml logs
+          exit 1
+      - name: OWASP ZAP full scan (fail HIGH/CRITICAL)
+        uses: zaproxy/action-full-scan@v0.12.0
+        with:
+          target: "http://127.0.0.1:8443"
+          rules_file_name: "tests/dast/zap-full-rules.tsv"
+          cmd_options: "-a -I"
+          allow_issue_writing: false
+          fail_action: true
+      - name: Upload ZAP full report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-full
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
+          if-no-files-found: ignore
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/docker/compose.ci.yml down -v

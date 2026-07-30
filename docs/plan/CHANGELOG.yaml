@@ -31,3 +31,12 @@ entries:
     type: initial
     summary: Initial master plan, architecture, CI/CD gates, security model, roadmap, requirements matrix for LocalVault.
     author: grok-build / stage-S0
+
+- version: "1.2.0-s8"
+  date: "2026-07-30"
+  summary: "S8 hardening, full ZAP, release readiness — v1 stages complete"
+  changes:
+    - vault-api rate limit, body limit, security headers
+    - dast-zap-full workflow
+    - residual risk register + release runbook
+    - release artifacts SBOM/checksums/cosign

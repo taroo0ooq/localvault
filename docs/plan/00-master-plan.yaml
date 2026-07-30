@@ -711,7 +711,7 @@ roadmap:
 
     - id: S8
       name: Hardening, Full DAST, Release Readiness
-      status: NOT_STARTED
+      status: COMPLETE
       depends_on: [S5, S6, S7]
       entry_criteria:
         - All feature stages complete

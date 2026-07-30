@@ -1,0 +1,8 @@
+10021	IGNORE	# X-Content-Type-Options may be spider noise on redirects
+10038	IGNORE	# CSP for JSON API
+10049	IGNORE	# Cacheable content residual
+90005	IGNORE	# Sec-Fetch request headers
+90004	IGNORE	# CORP residual
+10202	IGNORE	# Absence of Anti-CSRF Tokens (Bearer API, not cookie session)
+10096	IGNORE	# Timestamp disclosure low
+10027	IGNORE	# Information disclosure low

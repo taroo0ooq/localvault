@@ -65,7 +65,7 @@ func (a *API) healthz(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "localvault-api",
-		"stage":   "S4",
+		"stage":   "S8",
 	})
 }
 
@@ -74,14 +74,15 @@ func (a *API) serverInfo(w http.ResponseWriter, r *http.Request) {
 	publicURL := strings.TrimSpace(os.Getenv("VAULT_PUBLIC_BASE_URL"))
 	httpx.JSON(w, http.StatusOK, map[string]any{
 		"name":    "LocalVault",
-		"version": "0.4.0-s4",
-		"stage":   "S4",
+		"version": "0.8.0-s8",
+		"stage":   "S8",
 		"features": map[string]bool{
 			"multiuser":       true,
 			"device_pairing":  true,
 			"ciphertext_crud": true,
 			"client_crypto":   true,
 			"tunnel_access":   true,
+			"hardening_s8":    true,
 		},
 		"access": map[string]any{
 			"tunnel_mode":     tunnelMode,

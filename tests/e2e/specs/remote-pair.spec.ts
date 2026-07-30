@@ -15,7 +15,7 @@ function ed25519PublicKeyB64() {
  * S4 remote_pair_test: full register + item CRUD via reverse-proxy edge
  * (simulates Cloudflare/ngrok hop). Proves clients can pair over tunnel path.
  */
-test.describe("remote pair over tunnel edge (S4)", () => {
+test.describe("remote pair over tunnel edge (S4 path, stage S8)", () => {
   test("register and list items via edge URL", async ({ request }) => {
     // Edge health should proxy vault
     const health = await request.get(`${EDGE}/healthz`);
@@ -27,7 +27,7 @@ test.describe("remote pair over tunnel edge (S4)", () => {
     expect(info.ok()).toBeTruthy();
     const body = await info.json();
     expect(body.features.tunnel_access).toBe(true);
-    expect(body.stage).toBe("S4");
+    expect(body.stage).toBe("S8");
 
     const user = `tunnel_${Date.now().toString(36)}`;
     const reg = await request.post(`${EDGE}/v1/users/register`, {
