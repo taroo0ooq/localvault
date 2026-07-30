@@ -1,0 +1,109 @@
+# LocalVault — CI/CD Strict Gates
+# Policy: DO NOT SKIP ANY STAGE OR GATE
+meta:
+  document: cicd-gates
+  plan_version: "1.0.0"
+  last_updated: "2026-07-30"
+
+enforcement:
+  branch_protection:
+    main:
+      required_reviews: 1
+      require_codeowner_review: true
+      require_status_checks: true
+      require_branches_up_to_date: true
+      restrictions:
+        allow_force_push: false
+        allow_deletions: false
+    develop:
+      required_reviews: 1
+      require_status_checks: true
+
+required_checks:
+  - id: lint
+    blocking: true
+  - id: typecheck
+    blocking: true
+  - id: unit-tests
+    blocking: true
+  - id: sast-codeql
+    blocking: true
+  - id: sast-semgrep
+    blocking: true
+  - id: secrets-gitleaks
+    blocking: true
+  - id: dependency-scan
+    blocking: true
+  - id: dast-zap
+    blocking: true
+    applies_when: [api_changed, deploy_changed, always_on_main]
+  - id: e2e-playwright
+    blocking: true
+    applies_when: [web_changed, extension_changed, always_on_main]
+
+workflows_to_create_in_s1:
+  - file: .github/workflows/ci.yml
+    triggers: [pull_request, push to develop/main]
+    jobs: [lint, typecheck, unit, build]
+  - file: .github/workflows/sast-codeql.yml
+    triggers: [pull_request, push, schedule weekly]
+  - file: .github/workflows/sast-semgrep.yml
+    triggers: [pull_request]
+  - file: .github/workflows/secrets-gitleaks.yml
+    triggers: [pull_request, push]
+  - file: .github/workflows/deps.yml
+    triggers: [pull_request]
+  - file: .github/workflows/dast-zap.yml
+    triggers: [pull_request, schedule nightly]
+    steps:
+      - start compose.ci.yml
+      - wait healthz
+      - zap baseline / full
+      - fail on HIGH/CRITICAL
+      - upload report artifact
+  - file: .github/workflows/e2e-playwright.yml
+    triggers: [pull_request]
+    steps:
+      - start stack
+      - playwright test
+      - upload traces on failure
+  - file: .github/workflows/release.yml
+    triggers: [tag v*]
+    requires: all checks green
+
+commit_and_merge_rules:
+  - Never commit directly to main
+  - Never use [skip ci] on protected branches
+  - Never merge with failing required checks
+  - Never merge with unresolved HIGH/CRITICAL SAST/DAST
+  - Secrets findings require rotation evidence in PR
+
+bug_lifecycle:
+  - id: B1
+    step: Discover in Playwright/ZAP/manual
+  - id: B2
+    step: Create GitHub Issue with template (severity, repro, stage, REQ)
+  - id: B3
+    step: Create branch fix/{issue}-{slug} from develop
+  - id: B4
+    step: Implement fix + regression test
+  - id: B5
+    step: Open PR linking Fixes #{issue}
+  - id: B6
+    step: Full CI including SAST and DAST
+  - id: B7
+    step: Review + merge only if green
+  - id: B8
+    step: Verify issue closed; note in next handover YAML
+
+quality_thresholds:
+  codeql: no high/critical unfixed
+  semgrep: no high/critical unfixed
+  gitleaks: zero findings
+  zap: zero high/critical
+  playwright: 100% of required suite pass
+  coverage_unit_target: 70% crypto and auth paths initially; raise over time
+
+local_dev_parity:
+  - make ci-local runs lint + unit + gitleaks (if installed)
+  - Full DAST may be CI-only if ZAP heavy; still mandatory in CI

@@ -1,0 +1,106 @@
+# LocalVault — Requirements Traceability Matrix
+meta:
+  document: requirements-matrix
+  plan_version: "1.0.0"
+  last_updated: "2026-07-30"
+
+matrix:
+  - req: REQ-001
+    title: Docker Desktop vault host
+    stages: [S1, S2]
+    components: [vault-api, deploy/docker]
+    tests: [unit, dast-zap, compose-health]
+    status: planned
+
+  - req: REQ-002
+    title: Cross-platform clients
+    stages: [S3, S6, S7]
+    components: [web, desktop, mobile, extension, pwa]
+    platforms: [macOS, Windows, Android, iOS, ChromeOS]
+    tests: [playwright, flutter-test, manual-install]
+    status: planned
+
+  - req: REQ-003
+    title: Extension autofill
+    stages: [S5]
+    components: [extension]
+    tests: [playwright-fixture-login]
+    status: planned
+
+  - req: REQ-004
+    title: Extension autosave
+    stages: [S5]
+    components: [extension]
+    tests: [playwright-autosave]
+    status: planned
+
+  - req: REQ-005
+    title: Extension generate-and-fill
+    stages: [S5]
+    components: [extension, packages/crypto]
+    tests: [unit-generator, playwright-generate-fill]
+    status: planned
+
+  - req: REQ-006
+    title: Manual password generator
+    stages: [S3, S6, S7]
+    components: [packages/crypto, web, desktop, mobile]
+    tests: [unit-generator]
+    status: planned
+
+  - req: REQ-007
+    title: Mobile autofill any app
+    stages: [S7]
+    components: [mobile-android-autofill, mobile-ios-credential-provider]
+    tests: [device-manual, integration]
+    notes: OS APIs mandatory
+    status: planned
+
+  - req: REQ-008
+    title: Tunnel remote access
+    stages: [S4]
+    components: [cloudflared, ngrok, compose]
+    tests: [integration-remote-pair]
+    status: planned
+
+  - req: REQ-009
+    title: Lightweight
+    stages: [S1, S2, S3, S6]
+    components: [all]
+    tests: [size-budget-script]
+    status: planned
+
+  - req: REQ-010
+    title: Biometrics or PIN
+    stages: [S3, S6, S7]
+    components: [web, desktop, mobile]
+    tests: [playwright-pin, device-biometric]
+    status: planned
+
+  - req: REQ-011
+    title: First-login enrollment
+    stages: [S3, S6, S7]
+    components: [web, desktop, mobile]
+    tests: [playwright-onboarding]
+    status: planned
+
+  - req: REQ-012
+    title: Strict CI/CD SAST DAST
+    stages: [S1+]
+    components: [.github/workflows]
+    tests: [pipeline-self]
+    status: planned
+
+  - req: REQ-013
+    title: Bugs as GitHub issues
+    stages: [S1+]
+    components: [.github/ISSUE_TEMPLATE]
+    tests: [process]
+    status: planned
+
+  - req: REQ-014
+    title: Stage handover YAML
+    stages: [ALL]
+    components: [docs/handovers]
+    tests: [doc-presence-check]
+    status: in_progress  # S0 handover being written

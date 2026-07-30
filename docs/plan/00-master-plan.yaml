@@ -1,0 +1,716 @@
+# =============================================================================
+# LOCALVAULT — Master Development Plan
+# Product: Local-first password manager (Docker Desktop host + light clients)
+# Stage: 0 (Planning) — NO application code until this plan is approved/cross-referenced
+# Version: 1.0.0
+# Date: 2026-07-30
+# Owner: Tareq Al Ghazzi / taroo0ooq
+# =============================================================================
+
+meta:
+  project_codename: localvault
+  project_display_name: LocalVault
+  plan_version: "1.0.0"
+  plan_status: ACTIVE_STAGE_0
+  created_at: "2026-07-30T17:00:00-04:00"
+  last_reviewed_at: "2026-07-30T17:00:00-04:00"
+  governing_rules:
+    - DO_NOT_SKIP_ANY_STAGE
+    - DO_NOT_COMMIT_WITHOUT_SAST_AND_DAST
+    - CROSS_REFERENCE_EVERY_CHANGE_AGAINST_THIS_PLAN
+    - HANDOVER_YAML_AFTER_EVERY_STAGE
+    - BUGS_FILED_AS_GITHUB_ISSUES_BEFORE_FIX
+    - LIGHTWEIGHT_BY_DEFAULT
+    - SECURITY_OVER_FEATURES
+
+# -----------------------------------------------------------------------------
+# 1. Product vision & non-negotiables
+# -----------------------------------------------------------------------------
+vision:
+  summary: >
+    A lightweight, local-first password manager whose vault server runs on the
+    user's Docker Desktop. Clients (desktop, mobile, web, browser extensions)
+    connect either on LAN or via a user-controlled tunnel (Cloudflare Tunnel
+    preferred; ngrok as alternative). Zero-knowledge encryption: the Docker
+    host never stores plaintext credentials.
+  success_criteria:
+    - Vault runs entirely on user Docker Desktop; no third-party vault cloud
+    - PIN (≥6 digits) + biometrics (when available) gate every client unlock
+    - First-run enrollment: create PIN + enroll biometrics if supported
+    - Browser extension: autofill, autosave, password generate-and-fill
+    - Mobile OS autofill into third-party apps (Android Autofill Service, iOS Credential Provider)
+    - Manual password generator in all clients
+    - Strict GitHub CI/CD: SAST + secrets scan + DAST + Playwright before merge
+    - Stage handover YAML after every stage
+  non_goals:
+    - Multi-tenant SaaS vault hosting
+    - Team sharing / org admin (v1)
+    - P2P multiplayer-style sync without Docker host
+    - Proprietary crypto (use audited libraries only)
+
+# -----------------------------------------------------------------------------
+# 2. Requirements traceability matrix
+# -----------------------------------------------------------------------------
+requirements:
+  - id: REQ-001
+    title: Docker Desktop vault host
+    priority: P0
+    description: Vault API + encrypted storage runs as Docker Compose stack on Docker Desktop
+    stages: [S1, S2]
+    acceptance:
+      - docker compose up starts vault healthy
+      - encrypted volume persists across restarts
+      - health endpoint returns 200 without leaking secrets
+
+  - id: REQ-002
+    title: Cross-platform clients
+    priority: P0
+    description: Clients for macOS, Windows, Android, iOS, ChromeOS
+    stages: [S3, S6, S7]
+    acceptance:
+      - Desktop: macOS + Windows installers via Tauri
+      - Mobile: Android + iOS builds via Flutter
+      - ChromeOS: web PWA + Chrome extension + Android APK where ARC supported
+      - Web: responsive vault UI for any modern browser
+
+  - id: REQ-003
+    title: Browser extension autofill
+    priority: P0
+    description: Extension autofills account info on websites
+    stages: [S5]
+    acceptance:
+      - Detects login forms and fills username/password on user gesture
+      - Works on Chromium MV3; Firefox port planned same stage
+
+  - id: REQ-004
+    title: Browser extension autosave
+    priority: P0
+    description: Detect successful logins/signups and offer to save credentials
+    stages: [S5]
+    acceptance:
+      - Prompt after form submit when new credentials detected
+      - Deduplicates by domain + username
+      - Requires vault unlock session
+
+  - id: REQ-005
+    title: Extension password generator fill
+    priority: P0
+    description: Generate password and fill into website form fields
+    stages: [S5]
+    acceptance:
+      - Configurable length, charset, exclude ambiguous
+      - One-click fill into focused password field
+      - Optional immediate save to vault
+
+  - id: REQ-006
+    title: Manual password generator in apps
+    priority: P0
+    description: In-app generator on web, desktop, mobile
+    stages: [S3, S6, S7]
+    acceptance:
+      - Same crypto-quality RNG (CSPRNG) across clients
+      - Shared policy schema from packages/crypto
+
+  - id: REQ-007
+    title: Mobile autofill into any app
+    priority: P0
+    description: OS-level autofill for third-party mobile applications
+    stages: [S7]
+    notes: >
+      Requires Android Autofill Framework and iOS AutoFill Credential Provider
+      Extension. In-app only solutions CANNOT fill arbitrary apps — must use OS APIs.
+    acceptance:
+      - Android: AutofillService registered and fills login fields
+      - iOS: Credential Provider extension appears in system AutoFill
+      - Unlock gated by biometrics/PIN before credential disclosure
+
+  - id: REQ-008
+    title: Remote reachability via tunnel
+    priority: P0
+    description: Mobile/web reach Docker Desktop via Cloudflare Tunnel or ngrok agent
+    stages: [S4]
+    acceptance:
+      - Cloudflare Tunnel sidecar in Compose (primary)
+      - ngrok agent profile as alternate compose override
+      - TLS terminated; no plaintext vault traffic over public internet
+      - Device pairing / short-lived tokens required
+
+  - id: REQ-009
+    title: Lightweight footprint
+    priority: P0
+    description: Minimal binary size, memory, and dependency surface
+    stages: [S1, S2, S3, S6]
+    acceptance:
+      - Vault API image < 50MB compressed target (distroless/static)
+      - Desktop shell via Tauri (not Electron)
+      - Extension minimal permissions (no broad host read without need)
+      - Avoid heavy frameworks on server path
+
+  - id: REQ-010
+    title: Biometrics or 6-digit PIN
+    priority: P0
+    description: Unlock requires device biometrics if supported, else PIN ≥6
+    stages: [S3, S6, S7]
+    acceptance:
+      - PIN min length 6, max attempts with exponential backoff
+      - Biometric unlock unwraps local key; never replaces crypto root alone on weak devices
+      - Fallback to PIN always available
+
+  - id: REQ-011
+    title: First-login enrollment
+    priority: P0
+    description: Register vault, create PIN, enroll biometrics if supported
+    stages: [S3, S6, S7]
+    acceptance:
+      - Onboarding wizard: vault URL/pair → PIN create/confirm → biometric enroll
+      - Recovery: show one-time recovery key (user must store offline)
+
+  - id: REQ-012
+    title: Strict CI/CD with SAST and DAST
+    priority: P0
+    description: No merge without SAST + DAST + automated tests
+    stages: [S1+]
+    acceptance:
+      - Branch protection on main
+      - Required checks: lint, typecheck, unit, SAST (CodeQL+Semgrep), secrets (Gitleaks), DAST (ZAP), Playwright
+      - No force-push to main; no direct commit to main
+
+  - id: REQ-013
+    title: Bug tracking via GitHub Issues
+    priority: P0
+    description: Bugs found in testing filed as issues before fix work
+    stages: [S1+]
+    acceptance:
+      - Issue template with severity, repro, stage, requirement id
+      - Fix branches named fix/<issue-number>-slug
+      - Same CI gates apply to fix PRs
+
+  - id: REQ-014
+    title: Stage handover YAML
+    priority: P0
+    description: After each stage, write fully structured handover YAML
+    stages: [ALL]
+    acceptance:
+      - File at docs/handovers/stage-NN-handover.yaml
+      - Contains features, commits, scans, tests, open risks, next stage entry criteria
+
+# -----------------------------------------------------------------------------
+# 3. Architecture (high level)
+# -----------------------------------------------------------------------------
+architecture:
+  pattern: local_first_zero_knowledge
+  principles:
+    - Zero-knowledge: server stores ciphertext only
+    - Client-side encryption/decryption after unlock
+    - Defense in depth: transport TLS + at-rest encryption + device auth
+    - Least privilege for extensions and OS services
+    - Fail closed on auth/crypto errors
+
+  components:
+    vault_api:
+      runtime: Go 1.22+ (static binary)
+      why: small binary, strong concurrency, easy distroless Docker, mature crypto libs
+      responsibilities:
+        - Device pairing & session tokens
+        - Store/retrieve encrypted vault blobs and item ciphertext
+        - Audit log of access metadata (never plaintext secrets)
+        - Health, metrics (no secret leakage)
+      storage: SQLite (single-file volume) + optional SQLCipher layer for DB-at-rest
+      crypto_boundary: Server never receives master key or plaintext passwords
+
+    crypto_core:
+      location: packages/crypto (TypeScript pure) + mirrored Go for server-side KDF verification only where needed
+      algorithms:
+        kdf: Argon2id
+        bulk_encryption: AES-256-GCM
+        key_wrapping: AES-KW or AES-GCM with AAD
+        integrity: AEAD tags + optional HMAC-SHA256 for blobs
+        rng: OS CSPRNG only
+      key_hierarchy:
+        - Master PIN / passphrase → Argon2id → KEK (key encryption key)
+        - KEK unwraps DEK (data encryption key) stored encrypted on device/server
+        - DEK encrypts vault items
+        - Biometric: platform keystore holds unlock key that unwraps KEK material
+
+    web_client:
+      stack: React + TypeScript (shared UI package); PWA
+      role: vault management UI, generator, settings, pairing
+
+    desktop_client:
+      stack: Tauri 2 + shared web UI
+      platforms: macOS, Windows (Linux optional)
+      role: same as web + secure storage via OS keychain + biometrics (Touch ID / Windows Hello)
+
+    mobile_client:
+      stack: Flutter (Dart) for single codebase Android + iOS
+      why_not_rn: better OS autofill plugin ecosystem control + smaller release surface for this product class
+      features:
+        - Vault UI
+        - Biometric + PIN
+        - Android AutofillService plugin
+        - iOS Credential Provider extension target
+
+    browser_extension:
+      stack: TypeScript, Manifest V3
+      browsers: Chrome, Edge, Brave, Chromium; Firefox via MV3-compatible port
+      features: autofill, autosave, generate-and-fill, session lock
+      permissions_policy: activeTab + scripting + storage + limited host permissions; request optional hosts as needed
+
+    tunnel:
+      primary: cloudflared sidecar in Docker Compose
+      alternate: ngrok agent compose profile
+      security: public URL only exposes HTTPS to vault API; auth still required; optional Cloudflare Access
+
+  network_flows:
+    - name: local_lan
+      path: Client → host.docker.internal / LAN IP:8443 → vault_api TLS
+    - name: remote_tunnel
+      path: Client → Cloudflare/ngrok edge TLS → tunnel agent → vault_api (loopback)
+    - name: extension
+      path: Extension background SW → vault API (same as web) with device session token
+
+  data_model_v1:
+    tables:
+      devices:
+        - id, name, public_key, created_at, last_seen, revoked
+      sessions:
+        - id, device_id, token_hash, expires_at, created_at
+      vault_meta:
+        - id, kdf_params_json, wrapped_dek, version, updated_at
+      items_ciphertext:
+        - id, ciphertext, nonce, aad, updated_at, deleted_at
+      audit_events:
+        - id, device_id, event_type, metadata_json, created_at
+    client_only:
+      - plaintext items only in memory while unlocked
+      - OS keystore holds biometric-wrapped unlock material
+
+# -----------------------------------------------------------------------------
+# 4. Repository & branch strategy
+# -----------------------------------------------------------------------------
+repository:
+  name: localvault
+  visibility: private
+  structure: monorepo
+  layout:
+    apps:
+      vault-api: Go API + Dockerfile
+      web: Vite/React PWA vault UI
+      desktop: Tauri shell
+      mobile: Flutter app + platform autofill extensions
+      extension: browser extension
+    packages:
+      crypto: shared crypto + password generator
+      api-client: typed HTTP client
+      shared-types: zod/OpenAPI types
+      ui: shared design system (web/desktop)
+    deploy:
+      docker: compose, Dockerfiles, volumes
+      tunnel: cloudflared + ngrok configs
+    docs:
+      plan: living plan YAMLs
+      handovers: stage handover YAMLs
+      architecture: ADRs
+      cicd: pipeline docs
+    tests:
+      e2e: Playwright
+      dast: ZAP configs
+      fixtures: synthetic encrypted vaults
+  branches:
+    main:
+      protected: true
+      requires_pr: true
+      required_status_checks:
+        - lint
+        - typecheck
+        - unit-tests
+        - sast-codeql
+        - sast-semgrep
+        - secrets-gitleaks
+        - dependency-scan
+        - dast-zap
+        - e2e-playwright
+      dismiss_stale_reviews: true
+      enforce_admins: true
+    develop:
+      purpose: integration branch for stage work
+      protected: true
+      requires_pr: true
+      same_checks_as_main: true
+    feature:
+      pattern: "feature/S{stage}-{slug}"
+      example: feature/S2-vault-api-health
+    fix:
+      pattern: "fix/{issue_number}-{slug}"
+      example: fix/42-pin-lockout-race
+    release:
+      pattern: "release/v{semver}"
+    hotfix:
+      pattern: "hotfix/{issue_number}-{slug}"
+  commit_policy:
+    - Conventional Commits (feat|fix|docs|ci|security|test|chore|refactor)
+    - Every commit message references requirement id when applicable (REQ-xxx)
+    - No secrets in history; pre-commit gitleaks
+    - Signed commits preferred (GPG/SSH)
+  pr_policy:
+    - Template required: summary, plan cross-ref, test plan, risk
+    - Must link requirement IDs and stage ID
+    - Must show green CI including SAST and DAST
+    - No merge if any required check failed or skipped
+    - Squash merge to main preferred
+
+# -----------------------------------------------------------------------------
+# 5. CI/CD — strict gates (DO NOT SKIP)
+# -----------------------------------------------------------------------------
+cicd:
+  philosophy: >
+    Every change that can reach main must pass static analysis, secret scanning,
+    unit tests, dynamic scanning against a disposable environment, and E2E tests.
+    "Ship and scan later" is forbidden.
+  tools:
+    sast:
+      - name: CodeQL
+        scope: Go, TypeScript, JavaScript, Python if any
+      - name: Semgrep
+        rulesets: [p/security-audit, p/owasp-top-ten, p/react, p/golang]
+    secrets:
+      - name: Gitleaks
+        mode: full history on PR base..head
+      - name: GitHub secret scanning
+        push_protection: true
+    dependencies:
+      - name: OSV-Scanner
+      - name: npm audit (high+)
+      - name: govulncheck
+      - name: Dependabot security updates
+    dast:
+      - name: OWASP ZAP baseline
+        target: ephemeral vault stack from compose
+        fail_on: HIGH or CRITICAL
+      - name: OWASP ZAP full scan
+        when: release branches and nightly on develop
+    e2e:
+      - name: Playwright
+        suites: [web, extension-smoke, pairing-flow]
+    unit:
+      - go test ./...
+      - vitest / jest for TS packages
+      - flutter test
+  pipeline_stages_order:
+    - checkout
+    - setup_toolchains
+    - install_deps_with_lockfile
+    - lint
+    - typecheck
+    - unit_tests
+    - build_artifacts
+    - sast_codeql
+    - sast_semgrep
+    - secrets_gitleaks
+    - dependency_scan
+    - spin_ephemeral_stack
+    - dast_zap
+    - e2e_playwright
+    - upload_sarif_and_artifacts
+    - gate_merge_decision
+  rules:
+    - id: CI-001
+      rule: No commit lands on main without full pipeline green
+    - id: CI-002
+      rule: SAST findings severity HIGH/CRITICAL block merge
+    - id: CI-003
+      rule: Any secret finding blocks merge and requires rotation + history scrub plan
+    - id: CI-004
+      rule: DAST HIGH/CRITICAL blocks merge
+    - id: CI-005
+      rule: Playwright failure blocks merge
+    - id: CI-006
+      rule: Skipping checks with [skip ci] is banned on protected branches
+    - id: CI-007
+      rule: Fix for a bug must reference GitHub issue number
+    - id: CI-008
+      rule: New dependencies require license + security review note in PR
+  bug_workflow:
+    discover: Playwright / ZAP / manual QA / CodeQL
+    file_issue:
+      labels: [bug, stage/S{n}, severity/{sev}, req/{id}]
+      template: .github/ISSUE_TEMPLATE/bug.yml
+    branch: "fix/{number}-{slug}"
+    pr: same CI gates
+    verify: regression test added before merge
+    close: only after green CI + reviewer approval
+  environments:
+    ephemeral_ci: docker compose -f deploy/docker/compose.ci.yml
+    local_dev: docker compose -f deploy/docker/compose.yml
+    release_candidate: tagged images, signed with cosign (later stage)
+
+# -----------------------------------------------------------------------------
+# 6. Security architecture (best practices)
+# -----------------------------------------------------------------------------
+security:
+  threat_model_refs:
+    - STRIDE per component (docs/architecture/threat-model.md in S1)
+    - OWASP ASVS L2 target for vault API
+    - OWASP MASVS for mobile
+  controls:
+    authn:
+      - Device registration with public key
+      - Session tokens hashed at rest, short TTL, refresh rotation
+      - PIN never transmitted; only unlocks local crypto
+    authz:
+      - All vault item ops require valid session
+      - Device revocation invalidates sessions
+    crypto:
+      - Argon2id params tuned per platform (memory-hard)
+      - AES-256-GCM for items
+      - Constant-time compares for tokens
+    transport:
+      - TLS 1.2+ only; prefer 1.3
+      - Certificate pinning optional on mobile for tunnel domain
+    storage:
+      - Encrypted volume for SQLite
+      - No plaintext logs
+      - Memory wipe of sensitive buffers where language allows
+    extension:
+      - Lock vault on idle timeout
+      - Content scripts inject only on user gesture for fill when possible
+    mobile_autofill:
+      - System UI for credential selection
+      - Biometric/PIN before returning secret to OS autofill API
+  compliance_hygiene:
+    - No analytics of password content
+    - User-export encrypted backup
+    - Secure delete of vault items (tombstone + re-encrypt blob optional v2)
+
+# -----------------------------------------------------------------------------
+# 7. Staged roadmap (gates — must complete in order)
+# -----------------------------------------------------------------------------
+roadmap:
+  current_stage: S0
+  stages:
+    - id: S0
+      name: Planning & Architecture
+      status: IN_PROGRESS
+      entry_criteria:
+        - Product requirements received
+      exit_criteria:
+        - Master plan YAML approved/cross-referenced
+        - Architecture + CI/CD design documented
+        - Stage-0 handover YAML written
+        - GitHub repository initialized with plan docs
+        - Plan viewer available for stakeholder review
+      deliverables:
+        - docs/plan/00-master-plan.yaml
+        - docs/plan/01-roadmap.yaml
+        - docs/plan/02-architecture.yaml
+        - docs/plan/03-cicd-gates.yaml
+        - docs/plan/04-security-model.yaml
+        - docs/plan/05-requirements-matrix.yaml
+        - docs/handovers/stage-00-handover.yaml
+      forbidden:
+        - Feature application code for vault crypto/API (planning only)
+      estimated_effort: 1 stage session
+
+    - id: S1
+      name: Monorepo Bootstrap & CI Skeleton
+      status: NOT_STARTED
+      entry_criteria:
+        - S0 handover complete
+        - Plan cross-reference checklist passed
+      exit_criteria:
+        - Repo structure created
+        - Branch protection configured
+        - All CI workflows present (even if some jobs are smoke)
+        - SAST + Gitleaks + ZAP + Playwright workflows wired
+        - Pre-commit hooks documented
+        - S1 handover YAML
+      deliverables:
+        - Monorepo scaffold
+        - .github/workflows/*
+        - ISSUE/PR templates
+        - compose.ci.yml skeleton
+      estimated_effort: multi-day
+
+    - id: S2
+      name: Vault API + Docker Host
+      status: NOT_STARTED
+      depends_on: [S1]
+      entry_criteria:
+        - S1 handover complete
+        - CI green on scaffold
+      exit_criteria:
+        - Go API health, device pair, encrypted item CRUD
+        - Docker image builds in CI
+        - Unit tests + CodeQL + Semgrep green
+        - ZAP baseline against API green
+        - S2 handover YAML
+      requirements: [REQ-001, REQ-009, REQ-012]
+      estimated_effort: multi-day
+
+    - id: S3
+      name: Web Client + Crypto Core + Enrollment
+      status: NOT_STARTED
+      depends_on: [S2]
+      entry_criteria:
+        - S2 exit criteria met
+      exit_criteria:
+        - Shared crypto package with tests
+        - Web unlock PIN enrollment + biometric where WebAuthn/platform available
+        - Vault list/create/edit/delete (client-side encrypt)
+        - Manual password generator
+        - Playwright e2e for enrollment + CRUD
+        - Full SAST/DAST green
+        - S3 handover YAML
+      requirements: [REQ-006, REQ-010, REQ-011, REQ-002]
+      estimated_effort: multi-day
+
+    - id: S4
+      name: Tunnel Connectivity (Cloudflare + ngrok)
+      status: NOT_STARTED
+      depends_on: [S3]
+      entry_criteria:
+        - S3 exit criteria met
+      exit_criteria:
+        - cloudflared sidecar documented + compose service
+        - ngrok alternate profile
+        - Device pairing over tunnel validated
+        - Threat notes for public exposure documented
+        - S4 handover YAML
+      requirements: [REQ-008]
+      estimated_effort: multi-day
+
+    - id: S5
+      name: Browser Extension (fill / save / generate)
+      status: NOT_STARTED
+      depends_on: [S3, S4]
+      entry_criteria:
+        - Web client unlock works
+        - API stable
+      exit_criteria:
+        - MV3 extension with autofill, autosave, generate-fill
+        - Extension e2e smoke (Playwright + fixture pages)
+        - Permission audit documented
+        - SAST on extension code green
+        - S5 handover YAML
+      requirements: [REQ-003, REQ-004, REQ-005]
+      estimated_effort: multi-day
+
+    - id: S6
+      name: Desktop Clients (Tauri — macOS, Windows)
+      status: NOT_STARTED
+      depends_on: [S3, S4]
+      entry_criteria:
+        - S3 complete
+      exit_criteria:
+        - Tauri app wraps shared UI
+        - OS keychain + biometrics integration
+        - Lightweight packaging verified
+        - S6 handover YAML
+      requirements: [REQ-002, REQ-009, REQ-010, REQ-011]
+      estimated_effort: multi-day
+
+    - id: S7
+      name: Mobile + OS Autofill (Android, iOS)
+      status: NOT_STARTED
+      depends_on: [S3, S4]
+      entry_criteria:
+        - API + crypto stable
+        - Tunnel path works
+      exit_criteria:
+        - Flutter app with PIN + biometrics enrollment
+        - Android AutofillService functional
+        - iOS Credential Provider extension functional
+        - MASVS checklist started
+        - S7 handover YAML
+      requirements: [REQ-002, REQ-007, REQ-010, REQ-011]
+      notes: >
+        ChromeOS covered via Android APK (ARC) + Chrome extension + web PWA.
+      estimated_effort: multi-week
+
+    - id: S8
+      name: Hardening, Full DAST, Release Readiness
+      status: NOT_STARTED
+      depends_on: [S5, S6, S7]
+      entry_criteria:
+        - All feature stages complete
+      exit_criteria:
+        - Full ZAP scan clean of HIGH/CRITICAL
+        - Threat model residual risks accepted or mitigated
+        - Release runbook + recovery key UX verified
+        - Signed release artifacts (where applicable)
+        - Final handover YAML
+      requirements: [REQ-012, REQ-013, REQ-014]
+      estimated_effort: multi-day
+
+# -----------------------------------------------------------------------------
+# 8. Cross-reference protocol (mandatory before every development session)
+# -----------------------------------------------------------------------------
+cross_reference_protocol:
+  before_coding:
+    - Read docs/plan/00-master-plan.yaml current_stage
+    - Confirm previous stage handover exists and exit_criteria all true
+    - Select only tasks belonging to current stage
+    - Map each task to REQ-xxx
+  during_coding:
+    - No scope expansion into future stages without plan amendment
+    - Plan amendments require version bump + changelog entry in this file
+  after_coding:
+    - Run full CI locally where possible
+    - Ensure SAST + DAST + Playwright path executed (CI)
+    - File bugs as issues before fixing if found in test
+    - Write/update stage handover YAML when stage completes
+  plan_amendment_process:
+    - Document change in docs/plan/CHANGELOG.yaml
+    - Bump plan_version
+    - Re-run stage entry/exit criteria validation
+
+# -----------------------------------------------------------------------------
+# 9. Lightweight decisions (size budget)
+# -----------------------------------------------------------------------------
+lightweight_budget:
+  vault_api_image_mb_max: 50
+  desktop_installer_mb_target: 15
+  extension_unpacked_mb_max: 5
+  mobile_release_apk_mb_target: 25
+  strategies:
+    - Go static binary + distroless
+    - Tauri not Electron
+    - Tree-shake web assets
+    - No analytics SDKs
+    - Shared crypto pure TS for web/extension; native for mobile where needed
+
+# -----------------------------------------------------------------------------
+# 10. Testing strategy
+# -----------------------------------------------------------------------------
+testing:
+  unit:
+    crypto_vectors: known-answer tests for Argon2id/AES-GCM
+    api_handlers: table-driven Go tests
+    generator: charset/policy tests
+  integration:
+    api_with_sqlite_volume
+    device_pairing_flow
+  e2e_playwright:
+    - enrollment_pin_create
+    - unlock_and_crud_item
+    - password_generator_manual
+    - extension_fill_fixture_page
+    - tunnel_path_smoke (where secrets available in CI)
+  dast:
+    zap_baseline_every_pr
+    zap_full_nightly_and_release
+  mobile:
+    flutter_test
+    integration_test for pin enroll
+    manual checklist for OS autofill (device farm later)
+  bug_recording:
+    tool: GitHub Issues
+    required_fields: [title, severity, steps, expected, actual, stage, requirement_ids, environment]
+
+# -----------------------------------------------------------------------------
+# 11. Immediate next actions after S0
+# -----------------------------------------------------------------------------
+next_after_s0:
+  - Confirm plan with stakeholder (this document)
+  - Open S1 only after S0 handover status COMPLETE
+  - Do not implement vault crypto until S2/S3 per roadmap

@@ -1,0 +1,160 @@
+# LocalVault — Executable Roadmap (cross-check against 00-master-plan.yaml)
+meta:
+  document: roadmap
+  plan_version: "1.0.0"
+  current_stage: S0
+  last_updated: "2026-07-30"
+
+milestones:
+  - id: M0
+    name: Plan locked
+    stage: S0
+    target_outcome: Stakeholder can review architecture, gates, requirements in one place
+
+  - id: M1
+    name: Pipeline fortress
+    stage: S1
+    target_outcome: Empty-green CI with all gates present; branch protection on
+
+  - id: M2
+    name: Encrypted vault host
+    stage: S2
+    target_outcome: Docker Desktop stack stores only ciphertext; devices can pair
+
+  - id: M3
+    name: Usable web vault
+    stage: S3
+    target_outcome: Enroll PIN, unlock, manage items, generate passwords
+
+  - id: M4
+    name: Reach from anywhere
+    stage: S4
+    target_outcome: Cloudflare/ngrok path to home Docker host works with auth
+
+  - id: M5
+    name: Browser superpowers
+    stage: S5
+    target_outcome: Autofill, autosave, generate-fill in extension
+
+  - id: M6
+    name: Native desktop shells
+    stage: S6
+    target_outcome: macOS + Windows Tauri apps with biometrics
+
+  - id: M7
+    name: Mobile OS autofill
+    stage: S7
+    target_outcome: Android + iOS fill into third-party apps
+
+  - id: M8
+    name: Release-ready
+    stage: S8
+    target_outcome: Full DAST clean; runbooks; signed artifacts
+
+stage_gates:
+  S0:
+    entry: [requirements_received]
+    exit:
+      - master_plan_published
+      - architecture_published
+      - cicd_gates_published
+      - security_model_published
+      - requirements_matrix_published
+      - handover_yaml_written
+      - github_repo_seeded_with_docs
+      - plan_viewer_live
+    do_not_start_until_exit: S1
+
+  S1:
+    entry: [S0_exit_all_true]
+    exit:
+      - monorepo_layout_exists
+      - workflows_sast_dast_e2e_present
+      - branch_protection_documented_or_applied
+      - pr_issue_templates
+      - handover_yaml_written
+    do_not_start_until_exit: S2
+
+  S2:
+    entry: [S1_exit_all_true]
+    exit:
+      - vault_api_health
+      - device_pairing
+      - encrypted_item_crud
+      - docker_image_ci
+      - unit_sast_dast_green
+      - handover_yaml_written
+    do_not_start_until_exit: S3
+
+  S3:
+    entry: [S2_exit_all_true]
+    exit:
+      - crypto_package_kat
+      - pin_enrollment
+      - biometric_enroll_if_available
+      - vault_ui_crud
+      - manual_password_generator
+      - playwright_green
+      - sast_dast_green
+      - handover_yaml_written
+    do_not_start_until_exit: [S4, S5, S6, S7]
+
+  S4:
+    entry: [S3_exit_all_true]
+    exit:
+      - cloudflare_compose_service
+      - ngrok_profile
+      - remote_pair_test
+      - public_exposure_threat_notes
+      - handover_yaml_written
+
+  S5:
+    entry: [S3_exit_all_true, S4_recommended]
+    exit:
+      - autofill
+      - autosave
+      - generate_and_fill
+      - extension_e2e
+      - permission_audit
+      - handover_yaml_written
+
+  S6:
+    entry: [S3_exit_all_true]
+    exit:
+      - tauri_macos
+      - tauri_windows
+      - keychain_biometrics
+      - size_budget_check
+      - handover_yaml_written
+
+  S7:
+    entry: [S3_exit_all_true, S4_exit_all_true]
+    exit:
+      - flutter_app
+      - android_autofill_service
+      - ios_credential_provider
+      - pin_biometric_enroll
+      - handover_yaml_written
+
+  S8:
+    entry: [S5_exit, S6_exit, S7_exit]
+    exit:
+      - zap_full_clean
+      - residual_risk_register
+      - release_runbook
+      - final_handover
+
+work_in_progress_rules:
+  - Only one primary stage active for merge to develop/main
+  - Parallel spike branches allowed only if labeled spike/ and never merged without stage alignment
+  - Every PR lists stage id + REQ ids + plan section references
+
+definition_of_done_per_pr:
+  - Cross-referenced to plan
+  - Tests added/updated
+  - SAST green
+  - DAST green (API-touching changes)
+  - Playwright green (user-facing)
+  - No secrets
+  - Docs updated if behavior changed
+  - Handover updated if stage completes
