@@ -1,3 +1,13 @@
-# mobile
+# LocalVault Mobile (S7)
 
-Scaffold for LocalVault **S1**. Implementation starts in later stages per roadmap.
+Flutter client with **Android Autofill Service** and **iOS Credential Provider** scaffold.
+
+```bash
+cd apps/mobile
+flutter pub get
+flutter test
+flutter run
+```
+
+Enrollment: **username → PIN → recovery** (mobile Argon2id 64MiB/t3/p1).  
+Biometrics gate unlock when the device supports it.

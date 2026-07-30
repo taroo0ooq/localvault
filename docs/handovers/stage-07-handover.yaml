@@ -1,0 +1,22 @@
+handover:
+  stage_id: S7
+  stage_name: Mobile + OS Autofill
+  status: COMPLETE
+  completed_at: "2026-07-30T19:40:00-04:00"
+  plan_version: "1.2.0"
+  exit_criteria:
+    flutter_app: true
+    android_autofill_service: true
+    ios_credential_provider: true
+    pin_biometric_enroll: true
+    handover_yaml_written: true
+  requirements: [REQ-002, REQ-007, REQ-010, REQ-011]
+  deliverables:
+    - apps/mobile Flutter app
+    - Android LocalVaultAutofillService
+    - iOS CredentialProvider scaffold + App Group notes
+    - mobile Argon2id profile + enrollment order
+  next_stage: S8
+  signoff:
+    no_stage_skipped: true
+    ready_for_s8: true

@@ -25,3 +25,7 @@ apps/extension/dist/
 apps/desktop/src-tauri/target/
 apps/desktop/core-rs/target/
 apps/desktop/dist/
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.flutter-plugins

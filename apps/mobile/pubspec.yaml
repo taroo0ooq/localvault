@@ -1,0 +1,26 @@
+name: localvault_mobile
+description: LocalVault mobile client — multiuser zero-knowledge vault + OS autofill (S7)
+publish_to: "none"
+version: 0.7.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  flutter_secure_storage: ^9.2.4
+  local_auth: ^2.3.0
+  cryptography: ^2.7.0
+  convert: ^3.1.2
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
