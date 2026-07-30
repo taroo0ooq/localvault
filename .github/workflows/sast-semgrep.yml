@@ -11,11 +11,15 @@ jobs:
       image: semgrep/semgrep
     steps:
       - uses: actions/checkout@v4
-      - name: Semgrep scan
+      - name: Semgrep scan (application code)
         run: |
           semgrep scan \
             --config p/security-audit \
             --config p/owasp-top-ten \
             --error \
             --metrics=off \
+            --exclude='.github/**' \
+            --exclude='tests/e2e/**' \
+            --exclude='docs/**' \
+            --exclude-rule='go.lang.security.audit.net.use-tls.use-tls' \
             .

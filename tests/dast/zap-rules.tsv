@@ -1,0 +1,3 @@
+10049	IGNORE	# Cacheable content — API sets no-store; residual spider noise
+90005	IGNORE	# Sec-Fetch-* are request headers; not applicable to API responses
+90004	IGNORE	# CORP residual for pure JSON API

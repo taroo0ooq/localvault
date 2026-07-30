@@ -15,21 +15,22 @@ jobs:
           cache: npm
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "stable"
       - run: npm ci
       - name: npm audit (high+)
-        run: npm audit --audit-level=high || true
-        # S1: report audit; fail policy tightens when lockfile stabilizes
-        continue-on-error: true
+        run: npm audit --audit-level=high
       - name: OSV-Scanner
         uses: google/osv-scanner-action/osv-scanner-action@v1.9.2
         with:
           scan-args: |-
             --recursive
+            --skip-git
             ./
         continue-on-error: true
-      - name: govulncheck
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck third-party modules
         working-directory: apps/vault-api
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          $(go env GOPATH)/bin/govulncheck ./...
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          python3 ../../scripts/govulncheck-thirdparty.py

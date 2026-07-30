@@ -11,11 +11,13 @@ import (
 func main() {
 	addr := envOr("VAULT_LISTEN", "0.0.0.0:8443")
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", health.RootHandler)
 	mux.HandleFunc("/healthz", health.Handler)
 	mux.HandleFunc("/v1/server-info", health.ServerInfoHandler)
 
 	log.Printf("localvault-api listening on %s (S1 scaffold)", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	// TLS terminates at Cloudflare/ngrok (S4). Local Docker uses plain HTTP.
+	if err := http.ListenAndServe(addr, mux); err != nil { // nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 		log.Fatal(err)
 	}
 }

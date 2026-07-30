@@ -30,6 +30,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: "http://127.0.0.1:8443"
+          rules_file_name: "tests/dast/zap-rules.tsv"
           cmd_options: "-a"
           allow_issue_writing: false
           fail_action: true
