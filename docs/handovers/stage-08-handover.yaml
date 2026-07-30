@@ -1,0 +1,31 @@
+handover:
+  stage_id: S8
+  stage_name: Hardening, Full DAST, Release Readiness
+  status: COMPLETE
+  completed_at: "2026-07-30T19:45:00-04:00"
+  plan_version: "1.2.0"
+  exit_criteria:
+    zap_full_clean: true
+    residual_risk_register: true
+    release_runbook: true
+    signed_release_artifacts: true
+    final_handover: true
+  requirements: [REQ-012, REQ-013, REQ-014]
+  also_closes:
+    - REQ-018_final_verification: documented in release runbook
+    - REQ-019_final_verification: documented in release runbook
+    - REQ-017_residual: deferred post-v1 with PIN fallback (RR-006)
+  deliverables:
+    - vault-api rate limit + security headers + body limit
+    - dast-zap-full workflow (HIGH/CRITICAL gate)
+    - docs/s8/residual-risk-register.yaml
+    - docs/s8/release-runbook.md
+    - release.yml SBOM + checksums + cosign + multi-arch binaries
+  product_complete_v1:
+    stages_complete: [S0, S1, S2, S3, S4, S5, S6, S7, S8]
+    clients: [web, extension, desktop, mobile]
+    host: [vault-api, docker, tunnel-edge]
+  next_stage: null
+  signoff:
+    no_stage_skipped: true
+    release_ready: true

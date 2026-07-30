@@ -1,40 +1,32 @@
-# Branch protection (LocalVault)
+# Branch protection policy (REQ-012)
 
-## Policy (from docs/plan/03-cicd-gates.yaml)
+## `main` / `develop` required status checks
 
-### `main` and `develop`
-- Require pull request before merge
-- Require approvals: **1** (CODEOWNERS for owned paths)
-- Require status checks to pass:
-  - `lint`
-  - `typecheck`
-  - `unit-tests`
-  - `build` (from ci.yml)
-  - `sast-codeql`
-  - `sast-semgrep`
-  - `secrets-gitleaks`
-  - `dependency-scan`
-  - `dast-zap`
-  - `e2e-playwright`
-- Require branches to be up to date before merge
-- Do **not** allow force push
-- Do **not** allow deletions
-- Do **not** allow `[skip ci]` bypass for required checks
+| Check | Workflow |
+|-------|----------|
+| `ci` | lint / unit / build |
+| `sast-codeql` | CodeQL |
+| `sast-semgrep` | Semgrep |
+| `secrets-gitleaks` | Gitleaks |
+| `dependency-scan` | govulncheck / npm audit |
+| `dast-zap` | ZAP baseline |
+| `dast-zap-full` | ZAP full (HIGH/CRITICAL) |
+| `e2e-playwright` | Playwright |
+| `desktop-ci` | Tauri/frontend + core-rs |
+| `mobile-ci` | Flutter analyze + test |
 
-## Apply with GitHub UI or CLI
+## Rules
+
+- No direct commits to `main`
+- No force-push to `main`
+- PR required; squash merge preferred
+- Admin bypass only for emergency hotfix with post-hoc issue
+
+## Apply (GitHub Pro / org)
 
 ```bash
-# Example (admin): enable protection on main
-gh api -X PUT repos/taroo0ooq/localvault/branches/main/protection \
-  -f required_status_checks='{"strict":true,"contexts":["lint","typecheck","unit-tests","build","sast-codeql","sast-semgrep","secrets-gitleaks","dependency-scan","dast-zap","e2e-playwright"]}' \
-  -F enforce_admins=true \
-  -f required_pull_request_reviews='{"required_approving_review_count":1}' \
-  -F allow_force_pushes=false \
-  -F allow_deletions=false
+gh api -X PUT repos/{owner}/{repo}/branches/main/protection \
+  --input docs/cicd/branch-protection-payload.json
 ```
 
-Note: Status check names must match job `name:` fields after first successful workflow run on the branch.
-
-## S1 status
-- Workflows are present and required for PR merge process.
-- Protection should be applied after the first green run on this PR so check names exist.
+See also issue templates under `.github/ISSUE_TEMPLATE/`.

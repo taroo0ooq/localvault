@@ -1,0 +1,34 @@
+v1_completion:
+  plan_version: "1.2.0"
+  as_of: "2026-07-30"
+  stages:
+    S0: {status: complete, name: Plan + roadmap}
+    S1: {status: complete, name: Monorepo + CI skeleton}
+    S2: {status: complete, name: Multiuser vault API}
+    S3: {status: complete, name: Web client + crypto + import}
+    S4: {status: complete, name: Tunnel connectivity}
+    S5: {status: complete, name: Browser extension MV3}
+    S6: {status: complete, name: Desktop Tauri}
+    S7: {status: complete, name: Mobile Flutter + OS autofill}
+    S8: {status: complete, name: Hardening + full DAST + release}
+  requirements_p0:
+    REQ-001: complete
+    REQ-002: complete
+    REQ-003: complete
+    REQ-004: complete
+    REQ-005: complete
+    REQ-006: complete
+    REQ-007: complete
+    REQ-008: complete
+    REQ-009: complete
+    REQ-010: complete
+    REQ-011: complete
+    REQ-012: complete
+    REQ-013: complete
+    REQ-014: complete
+    REQ-015: complete
+    REQ-016: complete
+    REQ-017: partial_pin_fallback  # RR-006
+    REQ-018: complete
+    REQ-019: complete
+    REQ-020: complete

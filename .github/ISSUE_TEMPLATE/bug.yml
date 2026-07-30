@@ -1,5 +1,5 @@
 name: Bug report
-description: File a bug found in testing (Playwright, ZAP, QA). Required before fix work.
+description: File a bug found during testing (REQ-013)
 title: "[bug] "
 labels: ["bug"]
 body:
@@ -13,35 +13,29 @@ body:
   - type: input
     id: stage
     attributes:
-      label: Stage (e.g. S2)
-      placeholder: S1
+      label: Stage id
+      placeholder: S8
     validations:
       required: true
   - type: input
-    id: req_ids
+    id: req
     attributes:
-      label: Requirement IDs
-      placeholder: REQ-020
+      label: Requirement id
+      placeholder: REQ-012
   - type: textarea
-    id: steps
+    id: repro
     attributes:
-      label: Steps to reproduce
+      label: Reproduction steps
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected
+      label: Expected vs actual
     validations:
       required: true
-  - type: textarea
-    id: actual
+  - type: markdown
     attributes:
-      label: Actual
-    validations:
-      required: true
-  - type: input
-    id: environment
-    attributes:
-      label: Environment
-      placeholder: CI / Docker Desktop / browser
+      value: |
+        Fix branch naming: `fix/<issue-number>-slug`  
+        Same CI gates as feature PRs (REQ-012).

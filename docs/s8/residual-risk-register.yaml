@@ -1,0 +1,80 @@
+residual_risk_register:
+  version: "1.0.0"
+  stage: S8
+  reviewed_at: "2026-07-30"
+  methodology: "Plan security model + STRIDE residual after S1–S7 mitigations"
+
+  accepted_risks:
+    - id: RR-001
+      title: Docker host compromise yields ciphertext + metadata
+      severity: high
+      likelihood: low
+      residual: "Zero-knowledge design: attacker gets blobs without DEK; PIN/Argon2id + recovery still required"
+      mitigation_in_place:
+        - Client-side Argon2id + AES-GCM
+        - No plaintext passwords on server
+        - Tunnel bind 127.0.0.1 recommended
+      decision: ACCEPT
+      owner: product
+
+    - id: RR-002
+      title: Public tunnel URL expands network attack surface
+      severity: medium
+      likelihood: medium
+      residual: "HTTPS edge only; rate limit + auth still required; optional Cloudflare Access later"
+      mitigation_in_place:
+        - S4 tunnel edge docs
+        - S8 IP rate limiter (180/min)
+        - Session bearer tokens
+      decision: ACCEPT_WITH_MONITORING
+      owner: ops
+
+    - id: RR-003
+      title: Browser extension host_permissions are broad
+      severity: medium
+      likelihood: medium
+      residual: "MV3 content scripts need login page access; permission audit documented S5"
+      mitigation_in_place:
+        - docs/s5/permission-audit.md
+        - DEK memory-only while unlocked
+      decision: ACCEPT
+      owner: security
+
+    - id: RR-004
+      title: Biometric gate does not replace PIN KDF
+      severity: low
+      likelihood: n/a
+      residual: "By design (zero-knowledge). Users may perceive biometrics as full unlock."
+      mitigation_in_place:
+        - UX copy on desktop/mobile: PIN still derives DEK
+      decision: ACCEPT
+      owner: product
+
+    - id: RR-005
+      title: iOS Credential Provider requires Xcode target attach
+      severity: low
+      likelihood: medium
+      residual: "Scaffold present; full App Store packaging is operator step"
+      mitigation_in_place:
+        - ios/CredentialProvider/README.md
+      decision: ACCEPT
+      owner: mobile
+
+    - id: RR-006
+      title: WebAuthn PRF hardware-key unlock incomplete on all platforms
+      severity: medium
+      likelihood: medium
+      residual: "PRF feature-detect + PIN fallback documented; full multi-key UX polish post-v1"
+      mitigation_in_place:
+        - PIN and recovery always available
+        - Plan REQ-017 ladder documented
+      decision: DEFER_POST_V1
+      owner: security
+
+  mitigated_this_stage:
+    - Rate limiting and security headers on vault-api
+    - Full ZAP scan gate (HIGH/CRITICAL)
+    - Release SBOM + checksums + optional cosign
+    - Residual risk register published
+
+  review_cadence: "Every release candidate + after critical CVEs"
