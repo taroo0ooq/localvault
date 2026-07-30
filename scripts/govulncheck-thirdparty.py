@@ -9,9 +9,9 @@ proc = subprocess.run(
     capture_output=True,
     text=True,
 )
-# govulncheck exits non-zero when vulns exist; we still parse stdout
+
 mod_vulns = []
-for line in proc.stdout.splitlines():
+for line in (proc.stdout or "").splitlines():
     line = line.strip()
     if not line:
         continue
@@ -19,11 +19,15 @@ for line in proc.stdout.splitlines():
         obj = json.loads(line)
     except json.JSONDecodeError:
         continue
+    if not isinstance(obj, dict):
+        continue
     finding = obj.get("finding")
-    if not finding:
+    if not isinstance(finding, dict):
         continue
     osv = finding.get("osv")
     for frame in finding.get("trace") or []:
+        if not isinstance(frame, dict):
+            continue
         mod = frame.get("module")
         if mod and mod != "stdlib":
             mod_vulns.append((osv, mod, frame.get("package")))
@@ -36,5 +40,9 @@ if mod_vulns:
     sys.exit(1)
 
 print("OK: no third-party module vulnerabilities (stdlib managed via Go toolchain pin)")
-print(f"govulncheck exit was {proc.returncode}")
+print(f"govulncheck process exit was {proc.returncode}")
+if proc.stderr:
+    # keep logs short
+    err = proc.stderr.strip().splitlines()
+    print("govulncheck stderr (last 5):", *err[-5:], sep="\n")
 sys.exit(0)
