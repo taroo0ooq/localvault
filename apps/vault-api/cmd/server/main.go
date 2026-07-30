@@ -13,9 +13,8 @@ import (
 func main() {
 	addr := envOr("VAULT_LISTEN", "0.0.0.0:8443")
 	dbPath := envOr("VAULT_DB", "/data/vault.db")
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		// relative paths like ./vault.db — dir may be .
-		_ = err
+	if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
 	}
 
 	st, err := store.Open(dbPath)
@@ -28,12 +27,30 @@ func main() {
 	mux := http.NewServeMux()
 	a.Routes(mux)
 
-	log.Printf("localvault-api listening on %s db=%s (S2 multiuser)", addr, dbPath)
+	log.Printf("localvault-api listening on %s db=%s (S3 client-ready)", addr, dbPath)
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	// TLS terminates at Cloudflare/ngrok (S4). Local Docker uses plain HTTP.
-	if err := http.ListenAndServe(addr, mux); err != nil { // nosemgrep: go.lang.security.audit.net.use-tls.use-tls
+	if err := http.ListenAndServe(addr, withCORS(mux)); err != nil { // nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 		log.Fatal(err)
 	}
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Max-Age", "600")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func envOr(k, def string) string {

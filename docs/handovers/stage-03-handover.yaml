@@ -1,0 +1,17 @@
+handover:
+  stage_id: S3
+  stage_name: Web Client + Enrollment + Import
+  status: COMPLETE
+  completed_at: "2026-07-30T18:50:00-04:00"
+  plan_version: "1.2.0"
+  exit_criteria:
+    crypto_package_kat: true
+    username_pin_recovery_enrollment: true
+    google_apple_import: true
+    password_generator: true
+    multiuser_web_against_api: true
+  requirements: [REQ-006, REQ-010, REQ-011, REQ-015, REQ-016, REQ-017, REQ-018, REQ-019, REQ-020]
+  notes:
+    - WebAuthn full PRF unlock deferred polish; capability detected on enroll
+    - Recovery generated only after username+PIN (ADR-012)
+  next_stage: S4

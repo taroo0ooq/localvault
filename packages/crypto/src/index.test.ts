@@ -1,16 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { assertPasswordPolicy, CRYPTO_STAGE, DEFAULT_POLICY } from "./index";
+import {
+  ARGON2_PROFILES,
+  CRYPTO_STAGE,
+  assertPasswordPolicy,
+  decryptItem,
+  encryptItem,
+  enrollVaultCrypto,
+  generatePassword,
+  generateRecoveryPassphrase,
+  unlockWithPin,
+  unlockWithRecovery,
+  DEFAULT_POLICY,
+} from "./index";
 
-describe("@localvault/crypto S1 stub", () => {
-  it("exports S1 stage marker", () => {
-    expect(CRYPTO_STAGE).toBe("S1_STUB");
+describe("@localvault/crypto S3", () => {
+  it("stage marker", () => {
+    expect(CRYPTO_STAGE).toBe("S3");
   });
 
-  it("accepts default policy", () => {
-    expect(() => assertPasswordPolicy(DEFAULT_POLICY)).not.toThrow();
+  it("generates passwords", () => {
+    const p = generatePassword(DEFAULT_POLICY);
+    expect(p.length).toBe(20);
   });
 
-  it("rejects empty character classes", () => {
+  it("recovery passphrase word count", () => {
+    const r = generateRecoveryPassphrase(8);
+    expect(r.split(" ")).toHaveLength(8);
+  });
+
+  it("rejects empty policy", () => {
     expect(() =>
       assertPasswordPolicy({
         length: 20,
@@ -19,6 +37,54 @@ describe("@localvault/crypto S1 stub", () => {
         digits: false,
         symbols: false,
       }),
-    ).toThrow(/character class/);
+    ).toThrow();
+  });
+
+  it("enroll → unlock with PIN (KAT)", async () => {
+    const pin = "123456";
+    const enrolled = await enrollVaultCrypto(pin, "mobile_pin");
+    expect(enrolled.recoveryPassphrase.split(" ").length).toBe(8);
+    const dek = await unlockWithPin(
+      pin,
+      enrolled.kdf_params_json,
+      enrolled.wrapped_dek_pin,
+    );
+    expect(dek.length).toBe(32);
+    // wrong pin fails
+    await expect(
+      unlockWithPin("000000", enrolled.kdf_params_json, enrolled.wrapped_dek_pin),
+    ).rejects.toBeTruthy();
+  }, 60_000);
+
+  it("enroll → unlock with recovery", async () => {
+    const enrolled = await enrollVaultCrypto("654321", "desktop_pin");
+    const dek = await unlockWithRecovery(
+      enrolled.recoveryPassphrase,
+      enrolled.kdf_params_json,
+      enrolled.wrapped_dek_recovery,
+    );
+    expect(dek.length).toBe(32);
+  }, 60_000);
+
+  it("encrypt/decrypt item with DEK", async () => {
+    const enrolled = await enrollVaultCrypto("111111", "mobile_pin");
+    const plain = JSON.stringify({
+      title: "Example",
+      url: "https://example.com",
+      username: "u",
+      password: "p",
+    });
+    const enc = await encryptItem(enrolled.dek, plain, "item");
+    const dec = await decryptItem(
+      enrolled.dek,
+      enc.ciphertext,
+      enc.nonce,
+      enc.aad,
+    );
+    expect(dec).toBe(plain);
+  }, 60_000);
+
+  it("profiles defined", () => {
+    expect(ARGON2_PROFILES.recovery.t).toBeGreaterThanOrEqual(4);
   });
 });

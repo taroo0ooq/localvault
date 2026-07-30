@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { fetchHealth } from "./index";
+import { VaultClient, fetchHealth } from "./index";
 
-describe("@localvault/api-client S1 stub", () => {
-  it("exports fetchHealth function", () => {
+describe("@localvault/api-client", () => {
+  it("exports client", () => {
+    expect(typeof VaultClient).toBe("function");
     expect(typeof fetchHealth).toBe("function");
   });
 });
