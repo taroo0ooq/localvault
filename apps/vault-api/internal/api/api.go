@@ -64,20 +64,20 @@ func (a *API) healthz(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "localvault-api",
-		"stage":   "S2",
+		"stage":   "S3",
 	})
 }
 
 func (a *API) serverInfo(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{
 		"name":    "LocalVault",
-		"version": "0.2.0-s2",
-		"stage":   "S2",
+		"version": "0.3.0-s3",
+		"stage":   "S3",
 		"features": map[string]bool{
 			"multiuser":       true,
 			"device_pairing":  true,
 			"ciphertext_crud": true,
-			"client_crypto":   false, // S3
+			"client_crypto":   true,
 		},
 	})
 }

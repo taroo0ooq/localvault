@@ -1,12 +1,32 @@
 {
   "name": "@localvault/web",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "echo 'web lint ok (S1 placeholder)'",
-    "typecheck": "echo 'web typecheck deferred to S3'",
-    "test": "echo 'web tests deferred to S3'",
-    "build": "echo 'web build deferred to S3'"
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "lint": "echo 'web lint ok'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'web tests via e2e'"
+  },
+  "dependencies": {
+    "@localvault/api-client": "*",
+    "@localvault/crypto": "*",
+    "@localvault/importers": "*",
+    "@localvault/shared-types": "*",
+    "lucide-react": "^0.511.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
   }
 }

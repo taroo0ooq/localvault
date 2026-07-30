@@ -8,8 +8,8 @@ Local-first, multiuser password manager. Vault host on **Docker Desktop**; light
 |-------|------|--------|
 | S0 | Planning | Complete (plan v1.2.0) |
 | S1 | Monorepo + CI skeleton | Complete |
-| **S2** | Vault API + multiuser | **Complete (this PR)** |
-| S3 | Web + enrollment + import | Not started |
+| S2 | Vault API + multiuser | Complete |
+| **S3** | Web + enrollment + import | **Complete (this PR)** |
 
 ## Monorepo layout
 
