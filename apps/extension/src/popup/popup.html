@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LocalVault</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="logo">LV</div>
+      <div>
+        <div class="title">LocalVault</div>
+        <div id="status" class="muted">…</div>
+      </div>
+    </header>
+
+    <section id="view-connect" class="hidden">
+      <label>Vault URL
+        <input id="baseUrl" type="url" placeholder="https://vault.example.com" />
+      </label>
+      <button id="btnConnect" class="primary">Connect</button>
+    </section>
+
+    <section id="view-session" class="hidden">
+      <label>Username
+        <input id="username" autocomplete="username" />
+      </label>
+      <label>Session token
+        <input id="token" type="password" autocomplete="off" placeholder="from web register/login" />
+      </label>
+      <label>PIN
+        <input id="pin" type="password" inputmode="numeric" autocomplete="off" />
+      </label>
+      <button id="btnUnlock" class="primary">Unlock</button>
+      <p class="hint">Register once in the web app, paste session token here, then unlock with PIN.</p>
+    </section>
+
+    <section id="view-vault" class="hidden">
+      <div class="row">
+        <button id="btnAutofill" class="primary">Autofill this tab</button>
+        <button id="btnGenerate">Generate & fill</button>
+      </div>
+      <div class="row">
+        <button id="btnLock">Lock</button>
+      </div>
+      <div id="pending" class="pending hidden">
+        <div class="muted">Save password for this site?</div>
+        <pre id="pendingMeta"></pre>
+        <button id="btnSave" class="primary">Save to vault</button>
+        <button id="btnDismiss">Dismiss</button>
+      </div>
+      <ul id="matches"></ul>
+    </section>
+
+    <footer class="muted">MV3 · autofill · autosave · generate-fill</footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

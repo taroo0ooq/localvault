@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "LocalVault",
+  "version": "0.5.0",
+  "description": "Local-first password manager — autofill, autosave, generate-and-fill against your Docker vault.",
+  "action": {
+    "default_title": "LocalVault",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "commands": {
+    "autofill": {
+      "suggested_key": { "default": "Ctrl+Shift+L" },
+      "description": "Autofill login on current page"
+    },
+    "generate-fill": {
+      "suggested_key": { "default": "Ctrl+Shift+G" },
+      "description": "Generate password and fill"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
