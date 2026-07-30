@@ -14,3 +14,6 @@ Strict gates — see `docs/plan/03-cicd-gates.yaml`.
 | `release.yml` | release-gate | Tag releases |
 
 Bugs: use issue template → `fix/{issue}-{slug}` → same gates.
+
+## S1 verification
+Post-merge CI verification PR after first workflow registration.
