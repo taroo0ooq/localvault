@@ -1,44 +1,55 @@
 # LocalVault
 
-Local-first password manager: vault host on **Docker Desktop**, light clients (web, Tauri desktop, Flutter mobile, browser extensions), OS-level autofill, and strict CI/CD (SAST + DAST + Playwright).
+Local-first, multiuser password manager. Vault host on **Docker Desktop**; light clients later (web, Tauri, Flutter, browser extension).
 
 ## Status
 
-**Stage 0 (Planning & Architecture) — COMPLETE**
+| Stage | Name | Status |
+|-------|------|--------|
+| S0 | Planning | Complete (plan v1.2.0) |
+| **S1** | Monorepo + CI skeleton | **In progress / this branch** |
+| S2 | Vault API + multiuser | Not started |
+| S3 | Web + enrollment + import | Not started |
 
-Do **not** implement feature code until the current stage exit criteria are met and the stage handover YAML is written.
+## Monorepo layout
 
-## Plan documents
+```
+apps/vault-api     Go API (S1: healthz only)
+apps/web           Placeholder (S3)
+apps/desktop       Tauri (S6)
+apps/mobile        Flutter (S7)
+apps/extension     MV3 (S5)
+packages/crypto    Crypto (S3; S1 stub)
+packages/importers CSV import (S3; S1 stub)
+packages/api-client
+packages/shared-types
+deploy/docker      Compose + Dockerfile
+tests/e2e          Playwright
+docs/plan          Living plan YAMLs
+```
 
-| Document | Path |
-|----------|------|
-| Master plan | [`docs/plan/00-master-plan.yaml`](docs/plan/00-master-plan.yaml) |
-| Roadmap / gates | [`docs/plan/01-roadmap.yaml`](docs/plan/01-roadmap.yaml) |
-| Architecture | [`docs/plan/02-architecture.yaml`](docs/plan/02-architecture.yaml) |
-| CI/CD gates | [`docs/plan/03-cicd-gates.yaml`](docs/plan/03-cicd-gates.yaml) |
-| Security model | [`docs/plan/04-security-model.yaml`](docs/plan/04-security-model.yaml) |
-| Requirements matrix | [`docs/plan/05-requirements-matrix.yaml`](docs/plan/05-requirements-matrix.yaml) |
-| Stage 0 handover | [`docs/handovers/stage-00-handover.yaml`](docs/handovers/stage-00-handover.yaml) |
+## Quick start (S1)
 
-## Governance (non-negotiable)
+```bash
+# API
+cd apps/vault-api && go test ./... && go run ./cmd/server
 
-1. Cross-reference every change against `docs/plan/00-master-plan.yaml`.
-2. Do not skip stages or CI/CD gates.
-3. No merge without SAST (CodeQL + Semgrep), secrets scan (Gitleaks), DAST (OWASP ZAP), and Playwright where applicable.
-4. Bugs discovered in testing → GitHub Issues → `fix/{issue}-slug` → same CI gates.
-5. After each stage → `docs/handovers/stage-NN-handover.yaml`.
+# JS packages
+npm ci && npm test && npm run typecheck
 
-## Next stage
+# Docker
+docker compose -f deploy/docker/compose.yml up --build
+curl -s http://127.0.0.1:8443/healthz
+```
 
-**S1 — Monorepo Bootstrap & CI Skeleton**
+## Governance
 
-See master plan section `next_after_s0` and S1 exit criteria.
+1. Cross-reference `docs/plan/00-master-plan.yaml` before coding.
+2. No merge without SAST + secrets + DAST + Playwright (required checks).
+3. Bugs → GitHub Issues → `fix/{n}-slug`.
+4. Enrollment order: **username → PIN → recovery passphrase**.
+5. Stage handover YAML after each stage.
 
-## Product snapshot
+## Plan
 
-- Docker Desktop vault API (Go, zero-knowledge ciphertext)
-- Clients: macOS / Windows (Tauri), Android / iOS (Flutter), ChromeOS (PWA + extension + ARC), Web PWA
-- Browser extension: autofill, autosave, password generate-and-fill
-- Mobile: Android Autofill Service + iOS Credential Provider
-- Remote access: Cloudflare Tunnel (primary) or ngrok agent
-- Unlock: biometrics if available, else PIN ≥ 6 digits; first-run enrollment
+See [`docs/plan/`](docs/plan/) and handovers under [`docs/handovers/`](docs/handovers/).

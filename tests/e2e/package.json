@@ -1,0 +1,14 @@
+{
+  "name": "@localvault/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "lint": "echo 'e2e lint ok'",
+    "typecheck": "echo 'e2e typecheck ok'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

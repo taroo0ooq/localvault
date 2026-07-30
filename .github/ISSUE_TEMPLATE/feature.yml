@@ -1,0 +1,21 @@
+name: Feature request
+description: Propose a feature aligned to the plan (include REQ id or plan amendment need).
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: req
+    attributes:
+      label: Requirement / plan reference
+      placeholder: REQ-xxx or AMD-xxx
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Target stage
+      options: [S1, S2, S3, S4, S5, S6, S7, S8, plan-amendment-needed]

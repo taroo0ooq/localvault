@@ -1,0 +1,6 @@
+# LocalVault CODEOWNERS — require review on protected paths
+* @taroo0ooq
+/docs/ @taroo0ooq
+/.github/ @taroo0ooq
+/apps/vault-api/ @taroo0ooq
+/packages/crypto/ @taroo0ooq

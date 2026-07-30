@@ -1,0 +1,46 @@
+name: e2e-playwright
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  e2e-playwright:
+    name: e2e-playwright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: npm ci
+      - name: Start vault-api
+        working-directory: apps/vault-api
+        run: |
+          go build -o /tmp/vault-api ./cmd/server
+          VAULT_LISTEN=127.0.0.1:8443 /tmp/vault-api &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8443/healthz && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Install Playwright browsers
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: tests/e2e
+        env:
+          VAULT_BASE_URL: http://127.0.0.1:8443
+        run: npx playwright test
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: tests/e2e/test-results/
+          if-no-files-found: ignore

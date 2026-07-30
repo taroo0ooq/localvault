@@ -1,0 +1,22 @@
+{
+  "name": "localvault",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LocalVault monorepo \u2014 local-first multiuser password manager",
+  "workspaces": [
+    "packages/*",
+    "apps/web",
+    "tests/e2e"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspace=@localvault/crypto --workspace=@localvault/importers --workspace=@localvault/api-client --workspace=@localvault/shared-types",
+    "build": "npm run build --workspaces --if-present",
+    "test:e2e": "npm run test --workspace=tests/e2e",
+    "test:unit": "npm run test --workspace=@localvault/crypto --workspace=@localvault/importers --workspace=@localvault/api-client --workspace=@localvault/shared-types"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

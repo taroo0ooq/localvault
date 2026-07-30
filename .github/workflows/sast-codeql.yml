@@ -1,0 +1,33 @@
+name: sast-codeql
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  sast-codeql:
+    name: sast-codeql
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, go]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - name: Build Go (for CodeQL)
+        if: matrix.language == 'go'
+        working-directory: apps/vault-api
+        run: go build ./...
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

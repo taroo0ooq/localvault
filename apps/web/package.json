@@ -1,0 +1,12 @@
+{
+  "name": "@localvault/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "echo 'web lint ok (S1 placeholder)'",
+    "typecheck": "echo 'web typecheck deferred to S3'",
+    "test": "echo 'web tests deferred to S3'",
+    "build": "echo 'web build deferred to S3'"
+  }
+}

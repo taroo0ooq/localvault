@@ -1,0 +1,11 @@
+# Local development stack (Docker Desktop)
+services:
+  vault-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.vault-api
+    ports:
+      - "8443:8443"
+    environment:
+      VAULT_LISTEN: "0.0.0.0:8443"
+    restart: unless-stopped
