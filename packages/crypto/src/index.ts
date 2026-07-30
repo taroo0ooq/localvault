@@ -92,6 +92,76 @@ export function generatePassword(policy: PasswordPolicy = DEFAULT_POLICY): strin
   return chars.join("");
 }
 
+export type GeneratorMode = "random" | "memorable" | "pin";
+
+export interface MemorableOptions {
+  /** Number of words (3–8). Default 4. */
+  words?: number;
+  /** Join with separator. Default "-". */
+  separator?: string;
+  /** Append a digit for complexity. Default true. */
+  includeNumber?: boolean;
+  /** Capitalize each word. Default true. */
+  capitalize?: boolean;
+}
+
+/** Memorable passphrase (word list + optional digit) — generator UI "Memorable" mode. */
+export function generateMemorablePassword(opts: MemorableOptions = {}): string {
+  const wordCount = opts.words ?? 4;
+  if (wordCount < 3 || wordCount > 8) throw new Error("memorable words 3–8");
+  const sep = opts.separator ?? "-";
+  const capitalize = opts.capitalize !== false;
+  const includeNumber = opts.includeNumber !== false;
+  const parts: string[] = [];
+  for (let i = 0; i < wordCount; i++) {
+    let w = WORDLIST[randomInt(WORDLIST.length)]!;
+    if (capitalize) w = w.charAt(0).toUpperCase() + w.slice(1);
+    parts.push(w);
+  }
+  let out = parts.join(sep);
+  if (includeNumber) out += String(randomInt(10));
+  return out;
+}
+
+/** Numeric PIN only — generator UI "PIN" mode (4–12 digits). */
+export function generatePin(length = 6): string {
+  if (length < 4 || length > 12) throw new Error("PIN length 4–12");
+  // Full 0-9 for PINs (not ambiguous-stripped DIGITS set)
+  const pinDigits = "0123456789";
+  let out = "";
+  for (let i = 0; i < length; i++) out += pick(pinDigits);
+  return out;
+}
+
+/** Unified entry for the password generator UI. */
+export function generateByMode(
+  mode: GeneratorMode,
+  opts: {
+    length?: number;
+    digits?: boolean;
+    symbols?: boolean;
+    words?: number;
+  } = {},
+): string {
+  if (mode === "pin") {
+    return generatePin(opts.length ?? 6);
+  }
+  if (mode === "memorable") {
+    return generateMemorablePassword({
+      words: opts.words ?? opts.length ?? 4,
+      includeNumber: opts.digits !== false,
+    });
+  }
+  const length = opts.length ?? 20;
+  return generatePassword({
+    length: Math.max(8, Math.min(128, length)),
+    uppercase: true,
+    lowercase: true,
+    digits: opts.digits !== false,
+    symbols: opts.symbols === true,
+  });
+}
+
 /** Diceware-style recovery passphrase (REQ-016). */
 const WORDLIST = [
   "anchor","bright","cedar","drift","ember","fjord","glacier","harbor",
@@ -100,6 +170,10 @@ const WORDLIST = [
   "alpha","bravo","comet","delta","echo","frost","grove","horizon","iris",
   "jasper","keel","lumen","meadow","nova","opal","prism","quill","ridge",
   "sable","torch","ultra","vista","wave","yarn","zinc","amber","bloom",
+  "canyon","daisy","eagle","falcon","garden","honey","island","jungle",
+  "karma","lemon","mango","nectar","olive","pearl","quiet","rocket",
+  "silver","tulip","urban","violet","winter","xenial","yonder","zealot",
+  "coral","dune","fern","grape","haze","ivory","jewel","koala",
 ];
 
 export function generateRecoveryPassphrase(wordCount = 8): string {
