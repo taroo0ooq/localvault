@@ -1,3 +1,4 @@
+# CI / DAST — no tunnel tokens required
 services:
   vault-api:
     build:
@@ -8,3 +9,4 @@ services:
     environment:
       VAULT_LISTEN: "0.0.0.0:8443"
       VAULT_DB: "/tmp/vault-ci.db"
+      VAULT_TUNNEL_MODE: "0"

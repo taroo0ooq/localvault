@@ -1,0 +1,56 @@
+handover:
+  stage_id: S4
+  stage_name: Tunnel Connectivity (Cloudflare + ngrok)
+  status: COMPLETE
+  completed_at: "2026-07-30T19:00:00-04:00"
+  plan_version: "1.2.0"
+  prepared_by: Grok Build
+  stakeholder: Tareq Al Ghazzi
+
+  entry_criteria_validation:
+    - criterion: S3 exit complete
+      met: true
+
+  exit_criteria_validation:
+    - criterion: cloudflare_compose_service
+      met: true
+      evidence: deploy/docker/compose.yml profile cloudflare + cloudflared service
+    - criterion: ngrok_profile
+      met: true
+      evidence: deploy/docker/compose.yml profile ngrok
+    - criterion: remote_pair_test
+      met: true
+      evidence: apps/tunnel-edge + tests/e2e/specs/remote-pair.spec.ts
+    - criterion: public_exposure_threat_notes
+      met: true
+      evidence: docs/s4/threat-model-public-exposure.md
+    - criterion: handover_yaml_written
+      met: true
+
+  requirements_satisfied:
+    - REQ-008
+
+  deliverables:
+    - deploy/docker/compose.yml (profiles)
+    - deploy/docker/.env.example
+    - deploy/tunnel/cloudflared/*
+    - deploy/tunnel/ngrok/*
+    - deploy/scripts/tunnel-up.sh
+    - deploy/scripts/validate-compose.sh
+    - apps/tunnel-edge (CI edge simulator)
+    - vault-api access.tunnel_mode in server-info
+    - docs/s4/*
+
+  security_notes:
+    - Tokens never committed
+    - Default publish 127.0.0.1 when tunneling
+    - Tunnel ≠ vault unlock
+
+  next_stage:
+    id: S5
+    name: Browser Extension
+    ready_when: this_handover_complete_and_ci_green
+
+  signoff:
+    no_stage_skipped: true
+    ready_for_s5: true

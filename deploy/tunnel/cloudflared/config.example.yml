@@ -1,0 +1,18 @@
+# Cloudflare Tunnel — config-file mode (optional; token mode preferred in compose)
+# Docs: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+#
+# 1. Create a tunnel in Zero Trust dashboard
+# 2. Point public hostname → http://vault-api:8443 (Docker network)
+# 3. Prefer Cloudflare Access policy (email OTP / IdP) in front of the hostname
+# 4. TLS terminates at Cloudflare; origin stays HTTP on private Docker network
+
+tunnel: <TUNNEL_UUID>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: vault.example.com
+    service: http://vault-api:8443
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 10s
+  - service: http_status:404

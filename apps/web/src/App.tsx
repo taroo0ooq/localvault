@@ -392,8 +392,25 @@ export function App() {
       {screen === "connect" && (
         <Panel title="Connect to vault host" icon={<Server className="size-5 text-primary" />}>
           <p className="mb-4 text-sm text-muted">
-            Your Docker Desktop vault (LAN or tunnel URL). Example:{" "}
-            <code className="font-mono text-xs text-accent">http://127.0.0.1:8443</code>
+            Docker Desktop vault on LAN or via tunnel. Prefer HTTPS Cloudflare /
+            ngrok URL when away from home.
+          </p>
+          <ul className="mb-4 space-y-1 text-xs text-muted">
+            <li>
+              LAN:{" "}
+              <code className="font-mono text-accent">http://127.0.0.1:8443</code>
+            </li>
+            <li>
+              Cloudflare:{" "}
+              <code className="font-mono text-accent">https://vault.example.com</code>
+            </li>
+            <li>
+              ngrok:{" "}
+              <code className="font-mono text-accent">https://….ngrok-free.app</code>
+            </li>
+          </ul>
+          <p className="mb-4 text-xs text-muted">
+            Tunnel access only reaches the host — your PIN still unlocks the vault.
           </p>
           <label className="mb-3 block text-sm font-medium">
             Vault URL

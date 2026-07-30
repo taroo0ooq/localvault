@@ -1,0 +1,9 @@
+# ngrok agent config (alternate profile)
+version: "3"
+agent:
+  authtoken: ${NGROK_AUTHTOKEN}
+endpoints:
+  - name: localvault
+    url: https://<your-reserved-domain>.ngrok-free.app
+    upstream:
+      url: http://vault-api:8443

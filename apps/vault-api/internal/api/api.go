@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -64,20 +65,29 @@ func (a *API) healthz(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "localvault-api",
-		"stage":   "S3",
+		"stage":   "S4",
 	})
 }
 
 func (a *API) serverInfo(w http.ResponseWriter, r *http.Request) {
+	tunnelMode := os.Getenv("VAULT_TUNNEL_MODE") == "1" || strings.EqualFold(os.Getenv("VAULT_TUNNEL_MODE"), "true")
+	publicURL := strings.TrimSpace(os.Getenv("VAULT_PUBLIC_BASE_URL"))
 	httpx.JSON(w, http.StatusOK, map[string]any{
 		"name":    "LocalVault",
-		"version": "0.3.0-s3",
-		"stage":   "S3",
+		"version": "0.4.0-s4",
+		"stage":   "S4",
 		"features": map[string]bool{
 			"multiuser":       true,
 			"device_pairing":  true,
 			"ciphertext_crud": true,
 			"client_crypto":   true,
+			"tunnel_access":   true,
+		},
+		"access": map[string]any{
+			"tunnel_mode":     tunnelMode,
+			"public_base_url": publicURL,
+			"bind_guidance":   "Use VAULT_PUBLISH=127.0.0.1:8443 when Cloudflare/ngrok is the public edge",
+			"auth_note":       "Tunnel reachability does not unlock the vault; PIN/recovery still required",
 		},
 	})
 }
