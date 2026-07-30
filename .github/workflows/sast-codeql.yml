@@ -28,6 +28,9 @@ jobs:
         if: matrix.language == 'go'
         working-directory: apps/vault-api
         run: go build ./...
+      # upload false when code scanning UI not available (issue #10); still fail on interpret errors via CLI results
       - uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
+          upload: never
+        continue-on-error: false

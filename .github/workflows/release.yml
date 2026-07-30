@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Require CI green before release artifacts
+        env:
+          TAG_NAME: ${{ github.ref_name }}
         run: |
           echo "Release workflow scaffold (S1)."
           echo "Full signed artifacts + SBOM in S8."
-          echo "Tag: ${{ github.ref_name }}"
+          echo "Tag: ${TAG_NAME}"

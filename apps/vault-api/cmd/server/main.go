@@ -11,6 +11,7 @@ import (
 func main() {
 	addr := envOr("VAULT_LISTEN", "0.0.0.0:8443")
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", health.RootHandler)
 	mux.HandleFunc("/healthz", health.Handler)
 	mux.HandleFunc("/v1/server-info", health.ServerInfoHandler)
 

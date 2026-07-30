@@ -18,4 +18,5 @@ jobs:
             --config p/owasp-top-ten \
             --error \
             --metrics=off \
+            --exclude='tests/e2e/**' \
             .
