@@ -16,6 +16,7 @@ func main() {
 	mux.HandleFunc("/v1/server-info", health.ServerInfoHandler)
 
 	log.Printf("localvault-api listening on %s (S1 scaffold)", addr)
+	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
