@@ -3,6 +3,17 @@ meta:
   document: plan-changelog
 
 entries:
+  - version: "1.1.0"
+    date: "2026-07-30"
+    type: amendment
+    amendment_id: AMD-001
+    summary: >
+      Cross-device Argon2id profiles; app-generated recovery passphrase at enrollment;
+      WebAuthn platform + hardware-key (PRF) unlock ladder; guided CSV import for Google
+      Password Manager and Apple Passwords/iCloud. ADRs 007–010. See 06-plan-amendment-v1.1.0.yaml.
+    author: grok-build / plan-amendment
+    new_requirements: [REQ-015, REQ-016, REQ-017, REQ-018, REQ-019]
+
   - version: "1.0.0"
     date: "2026-07-30"
     type: initial
