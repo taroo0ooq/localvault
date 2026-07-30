@@ -84,7 +84,7 @@ jobs:
           VAULT_BASE_URL: http://127.0.0.1:8443
           WEB_BASE_URL: http://127.0.0.1:5173
           RUN_WEB_E2E: "1"
-        run: npx playwright test specs/web-enroll.spec.ts
+        run: npx playwright test specs/web-enroll.spec.ts specs/web-accounts.spec.ts
 
       - name: Preview desktop frontend
         run: |
