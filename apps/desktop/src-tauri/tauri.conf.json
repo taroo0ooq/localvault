@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LocalVault",
+  "version": "0.6.0",
+  "identifier": "com.localvault.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev --workspace=@localvault/desktop",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build --workspace=@localvault/desktop",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "LocalVault",
+        "width": 420,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis", "dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Utility",
+    "shortDescription": "Local-first multiuser password manager",
+    "longDescription": "LocalVault desktop client. Zero-knowledge vault against your Docker host."
+  }
+}

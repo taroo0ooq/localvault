@@ -21,3 +21,7 @@ apps/vault-api/server
 apps/vault-api/vault-api
 node_modules/
 apps/extension/dist/
+
+apps/desktop/src-tauri/target/
+apps/desktop/core-rs/target/
+apps/desktop/dist/

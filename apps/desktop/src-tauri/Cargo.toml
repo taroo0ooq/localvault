@@ -1,0 +1,31 @@
+[package]
+name = "localvault-desktop"
+version = "0.6.0"
+description = "LocalVault desktop client (Tauri) — S6"
+authors = ["LocalVault"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "localvault_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+localvault-desktop-core = { path = "../core-rs" }
+tauri = { version = "2", features = [] }
+tauri-plugin-os = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+thiserror = "2"
+log = "0.4"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
