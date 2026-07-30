@@ -1,0 +1,26 @@
+name: mobile-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  flutter-test:
+    name: flutter-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Pub get
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze --no-fatal-infos
+      - name: Test
+        working-directory: apps/mobile
+        run: flutter test
