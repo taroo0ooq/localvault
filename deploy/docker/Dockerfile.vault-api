@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM golang:1.25-alpine AS build
 WORKDIR /src
-COPY apps/vault-api/go.mod ./
+COPY apps/vault-api/go.mod apps/vault-api/go.sum ./
+RUN go mod download
 COPY apps/vault-api/ ./
 ENV GOTOOLCHAIN=auto
 RUN CGO_ENABLED=0 go build -o /out/vault-api ./cmd/server
@@ -9,5 +10,8 @@ RUN CGO_ENABLED=0 go build -o /out/vault-api ./cmd/server
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/vault-api /vault-api
 USER nonroot:nonroot
+ENV VAULT_LISTEN=0.0.0.0:8443
+ENV VAULT_DB=/data/vault.db
 EXPOSE 8443
+VOLUME ["/data"]
 ENTRYPOINT ["/vault-api"]
