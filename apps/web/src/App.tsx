@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Fingerprint,
+  Users,
 } from "lucide-react";
 import { VaultClient } from "@localvault/api-client";
 import {
@@ -40,6 +41,11 @@ import {
   type Screen,
   type StoredSession,
 } from "./lib/session";
+import {
+  listAccounts,
+  removeAccount,
+  type KnownAccount,
+} from "./lib/accounts";
 import { getOrCreateDeviceKey } from "./lib/device-keys";
 
 type EnrollStep = "username" | "pin" | "recovery" | "registering" | "done";
@@ -60,6 +66,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
 
   const [session, setSession] = useState<StoredSession | null>(() => loadSession());
+  const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>(() => listAccounts());
   const [dek, setDek] = useState<Uint8Array | null>(null);
   const [items, setItems] = useState<DecryptedItem[]>([]);
 
@@ -102,6 +109,14 @@ export function App() {
     [baseUrl, session?.token],
   );
 
+  const refreshAccounts = useCallback((url = baseUrl) => {
+    setKnownAccounts(listAccounts(url));
+  }, [baseUrl]);
+
+  useEffect(() => {
+    refreshAccounts(baseUrl);
+  }, [baseUrl, refreshAccounts]);
+
   useEffect(() => {
     if (session && !dek) setScreen("unlock");
     else if (session && dek) setScreen("vault");
@@ -114,8 +129,12 @@ export function App() {
       const info = await new VaultClient(baseUrl).serverInfo();
       localStorage.setItem("localvault.baseUrl", baseUrl);
       setServerLabel(`${info.name} ${info.version} · ${info.stage}`);
+      refreshAccounts(baseUrl);
       if (session) setScreen(dek ? "vault" : "unlock");
-      else setScreen("welcome");
+      else {
+        const accts = listAccounts(baseUrl);
+        setScreen(accts.length > 0 ? "accounts" : "welcome");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cannot reach vault host");
     } finally {
@@ -163,6 +182,7 @@ export function App() {
       };
       saveSession(s);
       setSession(s);
+      refreshAccounts(baseUrl);
       setDek(cryptoMat.dek);
       setEnrollStep("done");
 
@@ -232,6 +252,7 @@ export function App() {
       };
       saveSession(s);
       setSession(s);
+      refreshAccounts(baseUrl);
       setDek(preview.dek);
       setRecovery(preview.recoveryPassphrase);
       if (window.PublicKeyCredential) {
@@ -340,11 +361,48 @@ export function App() {
   };
 
   const signOut = () => {
+    // Keep known accounts so multiuser can re-select (issue #23)
     clearSession();
     setSession(null);
     setDek(null);
     setItems([]);
-    setScreen("welcome");
+    setUnlockPin("");
+    setUnlockSecret("");
+    setUsername("");
+    setPin("");
+    setPin2("");
+    setRecovery("");
+    setRecoverySaved(false);
+    setEnrollStep("username");
+    refreshAccounts(baseUrl);
+    const accts = listAccounts(baseUrl);
+    setScreen(accts.length > 0 ? "accounts" : "welcome");
+  };
+
+  const selectAccount = (acct: KnownAccount) => {
+    const s: StoredSession = {
+      baseUrl: acct.baseUrl,
+      username: acct.username,
+      deviceId: acct.deviceId,
+      token: acct.token,
+    };
+    saveSession(s);
+    setSession(s);
+    setBaseUrl(acct.baseUrl);
+    setUnlockPin("");
+    setUnlockSecret("");
+    setUseRecovery(false);
+    setError("");
+    setScreen("unlock");
+  };
+
+  const forgetAccount = (acct: KnownAccount) => {
+    removeAccount(acct.username, acct.baseUrl);
+    refreshAccounts(baseUrl);
+    if (session?.username === acct.username) {
+      clearSession();
+      setSession(null);
+    }
   };
 
   return (
@@ -361,20 +419,39 @@ export function App() {
             </div>
           </div>
         </div>
-        {dek && (
+        {(dek || session) && (
           <div className="flex gap-1">
+            {dek && (
+              <button
+                type="button"
+                onClick={lock}
+                className="rounded-lg border border-border px-2.5 py-2 text-xs text-muted"
+              >
+                Lock
+              </button>
+            )}
             <button
               type="button"
-              onClick={lock}
+              onClick={() => {
+                setDek(null);
+                setItems([]);
+                setSession(null);
+                clearSession();
+                refreshAccounts(baseUrl);
+                setScreen(listAccounts(baseUrl).length > 0 ? "accounts" : "welcome");
+              }}
               className="rounded-lg border border-border px-2.5 py-2 text-xs text-muted"
+              aria-label="Switch account"
+              data-testid="switch-account"
             >
-              Lock
+              Switch
             </button>
             <button
               type="button"
               onClick={signOut}
               className="rounded-lg border border-border p-2 text-muted"
               aria-label="Sign out"
+              data-testid="sign-out"
             >
               <LogOut className="size-4" />
             </button>
@@ -435,11 +512,20 @@ export function App() {
             <strong className="text-fg">username → PIN → recovery passphrase</strong>.
           </p>
           <div className="flex flex-col gap-2">
+            {knownAccounts.length > 0 && (
+              <PrimaryButton
+                onClick={() => setScreen("accounts")}
+                data-testid="choose-account"
+              >
+                <Users className="size-4" /> Choose account to sign in
+              </PrimaryButton>
+            )}
             <PrimaryButton
               onClick={() => {
                 setEnrollStep("username");
                 setScreen("enroll");
               }}
+              data-testid="create-account"
             >
               <UserPlus className="size-4" /> Create account
             </PrimaryButton>
@@ -455,10 +541,82 @@ export function App() {
                 type="button"
                 className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary"
                 onClick={() => setScreen("unlock")}
+                data-testid="unlock-current"
               >
                 Unlock @{session.username}
               </button>
             )}
+          </div>
+        </Panel>
+      )}
+
+      {screen === "accounts" && (
+        <Panel title="Choose account" icon={<Users className="size-5 text-primary" />}>
+          <p className="mb-3 text-sm text-muted">
+            Select a registered user on this device to unlock with PIN.
+          </p>
+          <ul
+            role="listbox"
+            aria-label="Registered accounts on this device"
+            data-testid="account-list"
+            className="mb-4 space-y-2"
+          >
+            {knownAccounts.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+                No saved accounts yet. Create one to get started.
+              </li>
+            )}
+            {knownAccounts.map((acct) => (
+              <li key={`${acct.baseUrl}::${acct.username}`} role="option" aria-selected={session?.username === acct.username}>
+                <div className="flex items-stretch gap-2">
+                  <button
+                    type="button"
+                    role="button"
+                    data-testid={`account-${acct.username}`}
+                    aria-label={`Sign in as ${acct.username}`}
+                    onClick={() => selectAccount(acct)}
+                    className="flex min-h-12 flex-1 flex-col items-start justify-center rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-left transition hover:bg-primary/15"
+                  >
+                    <span className="font-mono text-sm font-semibold text-primary">
+                      @{acct.username}
+                    </span>
+                    <span className="text-[11px] text-muted">
+                      Last used {new Date(acct.lastUsedAt).toLocaleString()}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${acct.username} from this device`}
+                    data-testid={`forget-${acct.username}`}
+                    onClick={() => forgetAccount(acct)}
+                    className="rounded-xl border border-border px-3 text-muted hover:text-danger"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col gap-2">
+            <PrimaryButton
+              onClick={() => {
+                setEnrollStep("username");
+                setUsername("");
+                setPin("");
+                setPin2("");
+                setScreen("enroll");
+              }}
+              data-testid="accounts-create"
+            >
+              <UserPlus className="size-4" /> Create another account
+            </PrimaryButton>
+            <button
+              type="button"
+              className="rounded-xl border border-border px-4 py-3 text-sm text-muted"
+              onClick={() => setScreen("welcome")}
+            >
+              Back
+            </button>
           </div>
         </Panel>
       )}
@@ -624,6 +782,20 @@ export function App() {
             onClick={() => setUseRecovery((v) => !v)}
           >
             {useRecovery ? "Use PIN instead" : "Use recovery passphrase"}
+          </button>
+          <button
+            type="button"
+            className="mt-2 block text-xs text-muted underline-offset-2 hover:underline"
+            data-testid="unlock-switch-user"
+            onClick={() => {
+              setDek(null);
+              clearSession();
+              setSession(null);
+              refreshAccounts(baseUrl);
+              setScreen("accounts");
+            }}
+          >
+            Not you? Choose another account
           </button>
           {webauthnNote && (
             <p className="mt-3 flex gap-2 text-xs text-muted">
@@ -834,7 +1006,7 @@ export function App() {
       )}
 
       <footer className="mt-auto pt-8 text-center text-[11px] text-muted">
-        Zero-knowledge · S3 web client · enrollment order enforced
+        Zero-knowledge · multiuser · choose account after sign-out
       </footer>
     </div>
   );
@@ -864,16 +1036,19 @@ function PrimaryButton({
   children,
   onClick,
   disabled,
+  "data-testid": testId,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  "data-testid"?: string;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      data-testid={testId}
       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-fg disabled:opacity-40"
     >
       {children}
