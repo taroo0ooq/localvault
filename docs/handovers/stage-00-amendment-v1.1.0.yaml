@@ -1,0 +1,44 @@
+# Handover addendum — Plan amendment AMD-001 (v1.1.0)
+# Not a new stage; attaches to S0 governance before S1 starts.
+handover_addendum:
+  id: S0-AMD-001
+  plan_version: "1.1.0"
+  status: COMPLETE
+  completed_at: "2026-07-30T17:30:00-04:00"
+  parent_stage: S0
+  summary: >
+    Incorporated Argon2id memory-hardness and WebAuthn/PRF research into the
+    product plan. Added app-generated recovery passphrase enrollment, cross-device
+    crypto profiles, and guided Google/Apple password import.
+
+  changes:
+    - REQ-015 Cross-device Argon2id profiles
+    - REQ-016 App-generated recovery passphrase
+    - REQ-017 WebAuthn platform + hardware-key unlock ladder
+    - REQ-018 Google Password Manager CSV import
+    - REQ-019 Apple Passwords / iCloud CSV import
+    - ADRs 007–010
+    - S3 exit criteria expanded
+    - Plan viewer: Enrollment + Import tabs + demo recovery generator
+
+  implementation_stage:
+    crypto_recovery_import: S3
+    monorepo_ci: S1
+    api: S2
+
+  files:
+    - docs/plan/00-master-plan.yaml
+    - docs/plan/01-roadmap.yaml
+    - docs/plan/02-architecture.yaml
+    - docs/plan/04-security-model.yaml
+    - docs/plan/05-requirements-matrix.yaml
+    - docs/plan/06-plan-amendment-v1.1.0.yaml
+    - docs/plan/CHANGELOG.yaml
+    - src/plan-data.ts
+    - src/components/PlanApp.tsx
+
+  signoff:
+    plan_cross_referenced: true
+    no_stage_skipped: true
+    feature_code_not_started_early: true
+    ready_for_s1: true

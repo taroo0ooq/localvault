@@ -1,7 +1,7 @@
 # LocalVault — Architecture Detail
 meta:
   document: architecture
-  plan_version: "1.0.0"
+  plan_version: "1.1.0"
   last_updated: "2026-07-30"
 
 system_context:
@@ -82,11 +82,14 @@ crypto_design:
     - Lock wipes DEK from memory
   first_run:
     - Generate DEK (CSPRNG)
-    - User creates PIN (≥6 digits) + confirm
-    - Derive KEK via Argon2id(PIN, salt, params)
-    - Store wrapped_DEK + kdf_params on server (ciphertext only)
-    - Show recovery key (encodes ability to re-wrap DEK) — user must confirm saved
-    - Offer biometric enrollment: store platform-protected unlock secret
+    - User creates PIN (≥6 digits) + confirm (recommend 8+ or unlock passphrase)
+    - App generates recovery passphrase (diceware 8 words default) — confirm saved
+    - Derive KEK_pin via Argon2id(PIN, salt, pin_profile_params)
+    - Derive KEK_recovery via Argon2id(recovery, salt2, recovery_high params)
+    - Store wrapped_DEK_pin, wrapped_DEK_recovery, kdf_params on server (ciphertext only)
+    - Offer platform biometric enrollment (device-local unlock secret)
+    - Optional WebAuthn hardware key with PRF wrap when available
+    - Optional Google/Apple CSV import (client parse → encrypt → upsert)
   item_encryption:
     - Each item JSON → AES-256-GCM(DEK, nonce, aad=item_id||version)
     - Server stores opaque blob
@@ -168,3 +171,27 @@ adrs:
     status: accepted
     decision: Single private monorepo with apps/* and packages/*
     rationale: Shared crypto/types; unified CI gates
+
+  - id: ADR-007
+    title: App-generated recovery passphrase
+    status: accepted
+    decision: CSPRNG diceware recovery at enroll; user confirms offline storage
+    rationale: User-chosen recovery is often weak; generated entropy is safer
+
+  - id: ADR-008
+    title: Google/Apple import via CSV only
+    status: accepted
+    decision: Guided user CSV export + client-side import; no unofficial APIs
+    rationale: No official bulk-read API; security and ToS
+
+  - id: ADR-009
+    title: Cross-device Argon2id via vault_meta
+    status: accepted
+    decision: First enroll writes kdf_params; all devices honor them
+    rationale: Identical KEK derivation across platforms
+
+  - id: ADR-010
+    title: WebAuthn PRF for hardware-key DEK unwrap
+    status: accepted
+    decision: Prefer PRF; assertion-only is not a vault key; PIN fallback always
+    rationale: Matches password-manager best practice (e.g. Bitwarden PRF path)

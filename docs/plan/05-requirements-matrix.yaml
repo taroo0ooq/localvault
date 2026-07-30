@@ -1,7 +1,7 @@
 # LocalVault — Requirements Traceability Matrix
 meta:
   document: requirements-matrix
-  plan_version: "1.0.0"
+  plan_version: "1.1.0"
   last_updated: "2026-07-30"
 
 matrix:
@@ -104,3 +104,38 @@ matrix:
     components: [docs/handovers]
     tests: [doc-presence-check]
     status: in_progress  # S0 handover being written
+
+  - req: REQ-015
+    title: Cross-device Argon2id crypto profiles
+    stages: [S3, S6, S7]
+    components: [packages/crypto, web, desktop, mobile, extension]
+    tests: [unit-kat-argon2, e2e-unlock-cross-device]
+    status: planned
+
+  - req: REQ-016
+    title: App-generated recovery passphrase
+    stages: [S3, S6, S7]
+    components: [packages/crypto, web, desktop, mobile]
+    tests: [unit-generator-entropy, playwright-enroll-recover]
+    status: planned
+
+  - req: REQ-017
+    title: WebAuthn platform + hardware key unlock
+    stages: [S3, S6, S7, S8]
+    components: [web, desktop, mobile, packages/crypto]
+    tests: [e2e-webauthn-mock, device-manual-hardware-key]
+    status: planned
+
+  - req: REQ-018
+    title: Import Google Password Manager
+    stages: [S3, S8]
+    components: [packages/importers, web, desktop, mobile]
+    tests: [unit-csv-google, playwright-import-google]
+    status: planned
+
+  - req: REQ-019
+    title: Import Apple Passwords / iCloud
+    stages: [S3, S8]
+    components: [packages/importers, web, desktop, mobile]
+    tests: [unit-csv-apple, playwright-import-apple]
+    status: planned

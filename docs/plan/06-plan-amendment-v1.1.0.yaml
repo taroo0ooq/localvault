@@ -1,0 +1,283 @@
+# =============================================================================
+# PLAN AMENDMENT v1.1.0
+# Source findings: Argon2id memory-hardness research + WebAuthn/PRF investigation
+# Date: 2026-07-30
+# =============================================================================
+meta:
+  amendment_id: AMD-001
+  from_plan_version: "1.0.0"
+  to_plan_version: "1.1.0"
+  status: ACCEPTED
+  amended_at: "2026-07-30T17:22:00-04:00"
+  cross_reference: docs/plan/00-master-plan.yaml
+  rationale: >
+    Stakeholder requested (1) apply crypto/WebAuthn findings for cross-device
+    unlock, (2) app-generated recovery passphrase at enrollment, (3) import from
+    Google Password Manager and Apple iCloud/Passwords.
+
+# -----------------------------------------------------------------------------
+# New / updated requirements
+# -----------------------------------------------------------------------------
+new_requirements:
+  - id: REQ-015
+    title: Cross-device crypto profiles (Argon2id)
+    priority: P0
+    stages: [S3, S6, S7]
+    description: >
+      Client-side Argon2id KDF with device-class profiles. Parameters (m,t,p,salt,version)
+      stored in vault_meta so every device derives the same KEK from the same PIN/passphrase.
+      Memory-hard defaults: mobile 64 MiB t=3 p=1; desktop 128 MiB t=3 p=2. OWASP floors are
+      minimums only — offline PIN attack is in scope for stolen ciphertext.
+    acceptance:
+      - kdf_params persisted and used identically on web, desktop, mobile, extension
+      - Known-answer tests for each profile
+      - Unlock latency targets documented per profile
+      - Re-enroll path can re-wrap DEK with stronger params (optional UX)
+
+  - id: REQ-016
+    title: App-generated recovery passphrase at enrollment
+    priority: P0
+    stages: [S3, S6, S7]
+    description: >
+      During first registration/enrollment the app MUST generate a high-entropy recovery
+      passphrase (CSPRNG; diceware-style word list or Crockford base32 groups). User must
+      confirm they saved it (re-type or multi-checkbox) before vault is considered enrolled.
+      Recovery passphrase unwraps DEK if PIN is forgotten. Shown once; never stored plaintext
+      on server; only wrapped_DEK material under recovery KEK is stored.
+    acceptance:
+      - Generator uses CSPRNG only
+      - Entropy ≥ 128 bits effective
+      - Confirm-save gate blocks finish until acknowledged
+      - Recovery flow: enter passphrase → re-set PIN → re-wrap DEK
+      - Playwright e2e covers generate → confirm → recover
+
+  - id: REQ-017
+    title: WebAuthn platform + hardware key unlock (cross-device)
+    priority: P0
+    stages: [S3, S6, S7, S8]
+    description: >
+      Unlock ladder: (1) WebAuthn PRF when available (hardware key or capable passkey) to
+      unwrap DEK; (2) platform biometrics unwrapping device-local secret; (3) PIN/passphrase
+      + Argon2id; (4) recovery passphrase. Hardware keys via authenticatorAttachment
+      cross-platform, userVerification required, multi-key registration. PRF feature-detected;
+      graceful fallback if unsupported.
+    acceptance:
+      - Platform authenticator enroll on supported devices
+      - Hardware security key registration (roaming authenticator)
+      - PRF path when browser+authenticator support hmac-secret/prf
+      - Fallback to PIN always works
+      - ≥1 backup authenticator recommended in UX
+
+  - id: REQ-018
+    title: Import Google Password Manager
+    priority: P0
+    stages: [S3, S8]
+    description: >
+      Guided import of credentials exported from Google Password Manager / Chrome.
+      No unofficial Google API scraping — user exports CSV from passwords.google.com or
+      Chrome password manager, then LocalVault parses client-side, encrypts, and upserts.
+    acceptance:
+      - Detect Google/Chrome CSV columns (name, url, username, password, note)
+      - Deduplicate by (normalized host + username)
+      - Progress UI + error report for bad rows
+      - Never upload plaintext CSV to vault API — encrypt items first
+      - In-app guide with steps for Google export
+
+  - id: REQ-019
+    title: Import Apple iCloud / Passwords app
+    priority: P0
+    stages: [S3, S8]
+    description: >
+      Guided import of credentials exported from Apple Passwords (iCloud Keychain).
+      User exports CSV from macOS Passwords app (or supported Apple export); LocalVault
+      parses Apple CSV schema client-side. No private iCloud API access.
+    acceptance:
+      - Detect Apple Passwords CSV schema
+      - Same encrypt-then-store pipeline as Google import
+      - In-app guide for macOS / iOS export steps
+      - Handle missing fields gracefully
+
+# -----------------------------------------------------------------------------
+# Enrollment sequence (updated)
+# -----------------------------------------------------------------------------
+enrollment_flow_v1_1:
+  steps:
+    - id: E1
+      name: Connect to vault host
+      detail: Pair device (LAN or tunnel) + verify server fingerprint
+    - id: E2
+      name: Create unlock PIN
+      detail: Min 6 digits; recommend 8+ or alphanumeric unlock passphrase
+    - id: E3
+      name: Generate recovery passphrase
+      detail: >
+        App generates recovery secret (default: 8 diceware words from EFF large wordlist,
+        or 6 groups of 4 Crockford base32). Display once with copy + printable card.
+        User must re-enter or confirm "I stored this offline".
+    - id: E4
+      name: Wrap DEK
+      detail: >
+        Generate DEK; wrap with KEK_pin (Argon2id) and KEK_recovery (Argon2id with higher
+        cost profile for recovery secret). Store both wrapped blobs in vault_meta.
+    - id: E5
+      name: Enroll platform biometrics
+      detail: If supported — store device-local unlock secret in OS keystore / Secure Enclave
+    - id: E6
+      name: Optional WebAuthn hardware key
+      detail: Register roaming key; prefer PRF for DEK wrap when available
+    - id: E7
+      name: Optional import
+      detail: Import wizard — Google CSV and/or Apple CSV
+    - id: E8
+      name: Finish
+      detail: Lock vault; require unlock via PIN/biometric/key
+
+# -----------------------------------------------------------------------------
+# Recovery passphrase generator specification
+# -----------------------------------------------------------------------------
+recovery_passphrase_spec:
+  primary_format: diceware_eff_large
+  alternatives:
+    - id: base32_groups
+      pattern: "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"  # Crockford, 120 bits-ish
+  diceware:
+    wordlist: EFF large (7776 words)
+    word_count: 8
+    separator: " "
+    effective_entropy_bits_approx: 103  # log2(7776^8) ≈ 103; acceptable with Argon2id
+    upgrade_option: word_count_10 for ~128-bit class
+  argon2id_for_recovery_kek:
+    profile: recovery_high
+    m_kib: 131072   # 128 MiB
+    t: 4
+    p: 2
+  ui_rules:
+    - never log or analytics the phrase
+    - clipboard auto-clear after 60s if copied
+    - block screenshots soft-warn on mobile where API allows
+    - require confirmation before leaving step
+
+# -----------------------------------------------------------------------------
+# Argon2id cross-device profiles
+# -----------------------------------------------------------------------------
+argon2id_profiles:
+  pin_mobile_default:  { m_kib: 65536,  t: 3, p: 1, target: "mobile" }
+  pin_desktop_default: { m_kib: 131072, t: 3, p: 2, target: "desktop_web" }
+  recovery_high:       { m_kib: 131072, t: 4, p: 2, target: "all" }
+  storage_rules:
+    - vault_meta.kdf_params is source of truth after first enroll
+    - secondary devices MUST use stored params (not re-benchmark)
+    - profile chosen on first enroll based on enrolling device class
+  offline_threat_note: >
+    6-digit PIN remains offline-weak even with memory hardness. Recovery passphrase
+    and optional longer unlock passphrase mitigate. Recommend 8+ digit PIN in UX.
+
+# -----------------------------------------------------------------------------
+# WebAuthn / hardware key (cross-device)
+# -----------------------------------------------------------------------------
+webauthn_spec:
+  unlock_ladder:
+    - prf_hardware_or_passkey
+    - platform_biometric_local_unwrap
+    - pin_or_unlock_passphrase_argon2id
+    - recovery_passphrase
+  registration:
+    platform:
+      authenticatorAttachment: platform
+      userVerification: required
+    hardware_key:
+      authenticatorAttachment: cross-platform
+      residentKey: preferred
+      userVerification: required
+      extensions: { prf: true, credProps: true }
+  multi_device:
+    - Each client device may register its own platform authenticator
+    - Hardware keys can be registered once and used on any client that supports WebAuthn
+    - Server stores only public credential descriptors + PRF-wrapped DEK blobs (ciphertext)
+  fallback: Always allow PIN + recovery
+
+# -----------------------------------------------------------------------------
+# Import architecture (Google + Apple)
+# -----------------------------------------------------------------------------
+import_architecture:
+  principle: client_side_parse_encrypt_then_sync
+  no_cloud_api_scraping: true
+  reason: >
+    Google and Apple do not provide official bulk-read APIs for third-party password
+    managers. Secure, supported path is user-initiated CSV export + LocalVault import.
+  sources:
+    google_password_manager:
+      export_locations:
+        - "https://passwords.google.com → Settings → Export"
+        - "Chrome → Password Manager → Settings → Download file"
+      csv_columns_expected: [name, url, username, password, note]
+      guide_id: GUIDE-IMPORT-GOOGLE
+    apple_icloud_passwords:
+      export_locations:
+        - "macOS Passwords app → File → Export All Passwords"
+        - "Document iOS limitations if export requires Mac"
+      csv_columns_expected: [Title, URL, Username, Password, Notes, OTPAuth]
+      guide_id: GUIDE-IMPORT-APPLE
+  pipeline:
+    - Select source (Google | Apple)
+    - Show step-by-step export guide (in-app)
+    - User picks CSV file (file picker; never auto-scan disk)
+    - Parse + validate rows
+    - Preview count + sample (masked passwords)
+    - User confirms import
+    - Encrypt each item with DEK client-side
+    - Upsert to vault API as ciphertext
+    - Wipe in-memory CSV buffer
+  security:
+    - CSV handled only in client memory
+    - No server-side CSV storage
+    - Import requires unlocked vault
+    - Audit event: import_completed with counts only
+
+# -----------------------------------------------------------------------------
+# Stage impact
+# -----------------------------------------------------------------------------
+stage_impact:
+  S0:
+    - Plan amendment docs + plan viewer update (this change)
+  S3:
+    - REQ-015 Argon2id profiles + KATs
+    - REQ-016 recovery passphrase generator + confirm UX
+    - REQ-017 platform WebAuthn enroll (basic); hardware key if time
+    - REQ-018 / REQ-019 import wizard MVP (both CSV formats)
+  S6_S7:
+    - Wire same enrollment + import on desktop/mobile
+    - Native file pickers for CSV
+  S8:
+    - Harden PRF hardware-key path across browsers
+    - Import edge-case fixtures + full DAST on import endpoints (none for CSV — client only)
+
+# -----------------------------------------------------------------------------
+# ADRs added
+# -----------------------------------------------------------------------------
+new_adrs:
+  - id: ADR-007
+    title: App-generated recovery passphrase (not user-chosen first)
+    decision: >
+      App generates recovery passphrase with CSPRNG wordlist; user confirms storage.
+      User-chosen recovery is optional secondary later; default is generated for entropy.
+    status: accepted
+
+  - id: ADR-008
+    title: Google/Apple import via user CSV export only
+    decision: >
+      No unofficial APIs or browser automation to scrape password managers.
+      Guided CSV import is the supported path.
+    status: accepted
+
+  - id: ADR-009
+    title: Argon2id profile stored in vault_meta for cross-device
+    decision: First enroll writes kdf_params; all devices must honor stored params.
+    status: accepted
+
+  - id: ADR-010
+    title: WebAuthn PRF preferred for hardware-key vault unwrap
+    decision: >
+      Assertion-only is insufficient for DEK unwrap. Use PRF when available; otherwise
+      hardware key may gate unlock while PIN still derives KEK.
+    status: accepted

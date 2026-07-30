@@ -10,10 +10,10 @@
 meta:
   project_codename: localvault
   project_display_name: LocalVault
-  plan_version: "1.0.0"
-  plan_status: ACTIVE_STAGE_0
+  plan_version: "1.1.0"
+  plan_status: ACTIVE_STAGE_0_AMENDED_v1_1_0
   created_at: "2026-07-30T17:00:00-04:00"
-  last_reviewed_at: "2026-07-30T17:00:00-04:00"
+  last_reviewed_at: "2026-07-30T17:22:00-04:00"
   governing_rules:
     - DO_NOT_SKIP_ANY_STAGE
     - DO_NOT_COMMIT_WITHOUT_SAST_AND_DAST
@@ -36,7 +36,10 @@ vision:
   success_criteria:
     - Vault runs entirely on user Docker Desktop; no third-party vault cloud
     - PIN (≥6 digits) + biometrics (when available) gate every client unlock
-    - First-run enrollment: create PIN + enroll biometrics if supported
+    - First-run enrollment: create PIN + app-generated recovery passphrase + biometrics if supported
+    - Cross-device Argon2id params stored in vault_meta (consistent KEK derivation)
+    - Optional WebAuthn platform + hardware-key unlock (PRF when available)
+    - Import credentials from Google Password Manager and Apple Passwords via guided CSV
     - Browser extension: autofill, autosave, password generate-and-fill
     - Mobile OS autofill into third-party apps (Android Autofill Service, iOS Credential Provider)
     - Manual password generator in all clients
@@ -193,6 +196,64 @@ requirements:
     acceptance:
       - File at docs/handovers/stage-NN-handover.yaml
       - Contains features, commits, scans, tests, open risks, next stage entry criteria
+
+
+  - id: REQ-015
+    title: Cross-device Argon2id crypto profiles
+    priority: P0
+    description: >
+      Memory-hard Argon2id profiles (mobile 64MiB/t3/p1, desktop 128MiB/t3/p2) with
+      kdf_params stored in vault_meta for identical derivation on every device.
+    stages: [S3, S6, S7]
+    acceptance:
+      - Stored kdf_params honored on all clients
+      - KAT tests per profile
+      - Offline threat notes in UX (short PIN weak offline)
+
+  - id: REQ-016
+    title: App-generated recovery passphrase at enrollment
+    priority: P0
+    description: >
+      CSPRNG-generated recovery passphrase (diceware default) shown once at registration;
+      user confirmation required; enables DEK recovery if PIN forgotten.
+    stages: [S3, S6, S7]
+    acceptance:
+      - ≥8 diceware words default
+      - Confirm-save gate
+      - Recovery re-set PIN flow
+      - Never stored plaintext on server
+
+  - id: REQ-017
+    title: WebAuthn platform and hardware-key unlock
+    priority: P0
+    description: >
+      Unlock ladder PRF → platform biometric → PIN → recovery. Hardware keys as
+      cross-platform authenticators with multi-key registration.
+    stages: [S3, S6, S7, S8]
+    acceptance:
+      - Platform enroll when supported
+      - Hardware key register
+      - PRF feature-detect + PIN fallback
+
+  - id: REQ-018
+    title: Import Google Password Manager
+    priority: P0
+    description: Guided client-side CSV import from Google/Chrome password export
+    stages: [S3, S8]
+    acceptance:
+      - Google/Chrome CSV parse
+      - Encrypt-then-upsert
+      - In-app export guide
+
+  - id: REQ-019
+    title: Import Apple iCloud / Passwords
+    priority: P0
+    description: Guided client-side CSV import from Apple Passwords export
+    stages: [S3, S8]
+    acceptance:
+      - Apple CSV parse
+      - Encrypt-then-upsert
+      - In-app export guide
 
 # -----------------------------------------------------------------------------
 # 3. Architecture (high level)
@@ -713,4 +774,4 @@ testing:
 next_after_s0:
   - Confirm plan with stakeholder (this document)
   - Open S1 only after S0 handover status COMPLETE
-  - Do not implement vault crypto until S2/S3 per roadmap
+  - Do not implement vault crypto until S2/S3 per roadmap; S3 includes recovery passphrase, Argon2id profiles, import MVP

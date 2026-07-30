@@ -1,7 +1,7 @@
 # LocalVault — Security Model
 meta:
   document: security-model
-  plan_version: "1.0.0"
+  plan_version: "1.1.0"
   last_updated: "2026-07-30"
 
 security_objectives:
@@ -20,13 +20,18 @@ trust_boundaries:
 
 authentication:
   first_run:
-    - Create PIN min 6 digits (recommend 8+; allow alphanumeric passphrase later)
+    - Create PIN min 6 digits (recommend 8+; allow unlock passphrase)
     - Confirm PIN
-    - Generate recovery key (display once)
-    - Enroll biometrics if platform supports
+    - App generates recovery passphrase (diceware/CSPRNG) — display once, user must confirm saved
+    - Wrap DEK under PIN-KEK and Recovery-KEK (higher Argon2id cost for recovery)
+    - Enroll platform biometrics if supported
+    - Optional WebAuthn hardware key (prefer PRF for DEK wrap)
+    - Optional guided import (Google / Apple CSV)
   subsequent_unlock:
-    - Prefer biometrics → unwrap local unlock secret → DEK
-    - Else PIN → Argon2id → KEK → DEK
+    - Prefer WebAuthn PRF (hardware key / capable passkey) → unwrap DEK
+    - Else platform biometrics → unwrap local unlock secret → DEK
+    - Else PIN/unlock passphrase → Argon2id (stored kdf_params) → KEK → DEK
+    - Recovery passphrase → re-set PIN path
   remote_api:
     - Device paired via QR/code showing server fingerprint
     - Sessions short-lived; refresh rotation
@@ -45,6 +50,22 @@ encryption:
     kdf: Argon2id
     aead: AES-256-GCM
     hashing_tokens: SHA-256 or blake2b for token digests
+  argon2id_profiles:
+    pin_mobile_default: { m_kib: 65536, t: 3, p: 1 }
+    pin_desktop_default: { m_kib: 131072, t: 3, p: 2 }
+    recovery_high: { m_kib: 131072, t: 4, p: 2 }
+  cross_device: vault_meta.kdf_params is source of truth after first enroll
+  recovery_passphrase:
+    generator: app_csprng_diceware_8_words
+    confirmation: required_before_enroll_complete
+    storage: only recovery-wrapped DEK on server; never plaintext phrase
+  webauthn:
+    prf_preferred_for_hardware_key_unwrap: true
+    fallback: pin_and_recovery
+  import:
+    google_csv: client_side_only
+    apple_csv: client_side_only
+    no_unofficial_cloud_apis: true
 
 pin_policy:
   min_length: 6
