@@ -1,0 +1,21 @@
+handover:
+  stage_id: S5
+  stage_name: Browser Extension (MV3)
+  status: COMPLETE
+  completed_at: "2026-07-30T19:15:00-04:00"
+  plan_version: "1.2.0"
+  exit_criteria:
+    autofill: true
+    autosave: true
+    generate_and_fill: true
+    extension_e2e: true
+    permission_audit: true
+    handover_yaml_written: true
+  requirements: [REQ-003, REQ-004, REQ-005]
+  size_budget:
+    unpacked_mb_max: 5
+    measured: see build output
+  next_stage: S6
+  signoff:
+    no_stage_skipped: true
+    ready_for_s6: true

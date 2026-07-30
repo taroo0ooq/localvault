@@ -60,6 +60,9 @@ jobs:
           EDGE_BASE_URL: http://127.0.0.1:9443
         run: npx playwright test --grep-invert "web enrollment"
 
+      - name: Build extension (S5)
+        run: npm run build --workspace=@localvault/extension
+
       - name: Build web client
         run: npm run build --workspace=@localvault/web
 

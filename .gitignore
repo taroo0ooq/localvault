@@ -20,3 +20,4 @@ zap-report/
 apps/vault-api/server
 apps/vault-api/vault-api
 node_modules/
+apps/extension/dist/

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Example Login</title>
+  </head>
+  <body>
+    <h1>Sign in</h1>
+    <form id="login" method="post" action="/submit">
+      <label>Email <input type="email" name="email" autocomplete="username" id="email" /></label>
+      <label>Password <input type="password" name="password" autocomplete="current-password" id="password" /></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <form id="register">
+      <label>User <input type="text" name="username" autocomplete="username" /></label>
+      <label>New password <input type="password" name="new-password" autocomplete="new-password" id="newpass" /></label>
+      <button type="submit">Register</button>
+    </form>
+  </body>
+</html>
