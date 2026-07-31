@@ -1018,7 +1018,7 @@ export function App() {
                     className="w-full accent-primary"
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-5">
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
                   <Toggle
                     label="Numbers"
                     checked={genNumbers}
@@ -1284,25 +1284,32 @@ function Toggle({
   testId?: string;
 }) {
   return (
-    <label className="inline-flex items-center gap-2.5 text-sm font-medium text-fg">
-      <span>{label}</span>
+    <div className="inline-flex items-center gap-3">
+      <span className="select-none text-sm font-medium text-fg">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         data-testid={testId}
         onClick={() => onChange(!checked)}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-          checked ? "bg-primary" : "bg-border"
-        }`}
+        className={
+          "relative inline-flex h-7 w-12 shrink-0 items-center overflow-hidden rounded-full p-0.5 " +
+          "transition-colors duration-200 " +
+          (checked ? "bg-primary" : "bg-surface-2 ring-1 ring-border")
+        }
       >
+        {/* In-flow thumb — translate stays inside the track (no absolute drift) */}
         <span
-          className={`absolute top-0.5 size-6 rounded-full bg-fg shadow transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
-          }`}
+          aria-hidden
+          className={
+            "pointer-events-none block size-6 shrink-0 rounded-full bg-white shadow-sm " +
+            "transition-transform duration-200 ease-out " +
+            (checked ? "translate-x-5" : "translate-x-0")
+          }
         />
       </button>
-    </label>
+    </div>
   );
 }
 
