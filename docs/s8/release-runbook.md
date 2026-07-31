@@ -84,3 +84,15 @@ docker compose -f deploy/docker/compose.ci.yml up -d --build
 2. Branch `fix/<issue-number>-slug`  
 3. Same CI gates as feature PRs  
 4. Link issue in PR; squash merge only when green  
+
+
+## Windows host distribution (Defender)
+
+Do **not** publish a bare `*.exe` as the primary Windows download. Ship:
+
+`LocalVault-Host-windows-amd64-vX.Y.Z.zip`
+
+containing PE-metadata binary + launcher + `DEFENDER-FALSE-POSITIVE.md`.
+
+Users should Unblock the ZIP, extract, run `Start-LocalVault-Host.cmd`.
+Long-term: Authenticode signing (Azure Trusted Signing / EV cert).

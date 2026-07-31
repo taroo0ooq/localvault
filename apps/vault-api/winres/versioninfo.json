@@ -1,0 +1,30 @@
+{
+  "FixedFileInfo": {
+    "FileVersion": { "Major": 0, "Minor": 8, "Patch": 1, "Build": 0 },
+    "ProductVersion": { "Major": 0, "Minor": 8, "Patch": 1, "Build": 0 },
+    "FileFlagsMask": "3f",
+    "FileFlags": "00",
+    "FileOS": "040004",
+    "FileType": "01",
+    "FileSubType": "00"
+  },
+  "StringFileInfo": {
+    "Comments": "LocalVault zero-knowledge password vault host. Open source. Listens only on the address you configure (default loopback).",
+    "CompanyName": "LocalVault Open Source",
+    "FileDescription": "LocalVault Vault Host (local password manager API)",
+    "FileVersion": "0.8.1.0",
+    "InternalName": "LocalVault-Host",
+    "LegalCopyright": "Copyright (c) LocalVault contributors — MIT/Apache dual if present in repo",
+    "LegalTrademarks": "LocalVault",
+    "OriginalFilename": "LocalVault-Host.exe",
+    "PrivateBuild": "",
+    "ProductName": "LocalVault",
+    "ProductVersion": "0.8.1.0",
+    "SpecialBuild": "windows-host"
+  },
+  "VarFileInfo": {
+    "Translation": { "LangID": "0409", "CharsetID": "04B0" }
+  },
+  "IconPath": "",
+  "ManifestPath": "winres/app.manifest"
+}
