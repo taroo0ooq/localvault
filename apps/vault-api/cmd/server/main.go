@@ -12,6 +12,12 @@ import (
 	"github.com/taroo0ooq/localvault/apps/vault-api/internal/store"
 )
 
+// Filled via -ldflags at release build time.
+var (
+	buildVersion = "dev"
+	buildProduct = "localvault-api"
+)
+
 func main() {
 	addr := envOr("VAULT_LISTEN", "0.0.0.0:8443")
 	dbPath := envOr("VAULT_DB", "/data/vault.db")
@@ -39,7 +45,7 @@ func main() {
 		),
 	)
 
-	log.Printf("localvault-api listening on %s db=%s (S8 hardened)", addr, dbPath)
+	log.Printf("%s %s listening on %s db=%s (S8 hardened)", buildProduct, buildVersion, addr, dbPath)
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	// TLS terminates at Cloudflare/ngrok (S4). Local Docker uses plain HTTP.
 	if err := http.ListenAndServe(addr, handler); err != nil { // nosemgrep: go.lang.security.audit.net.use-tls.use-tls
