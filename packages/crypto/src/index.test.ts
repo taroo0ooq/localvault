@@ -7,6 +7,9 @@ import {
   encryptItem,
   enrollVaultCrypto,
   generatePassword,
+  generateByMode,
+  generateMemorablePassword,
+  generatePin,
   generateRecoveryPassphrase,
   unlockWithPin,
   unlockWithRecovery,
@@ -86,5 +89,27 @@ describe("@localvault/crypto S3", () => {
 
   it("profiles defined", () => {
     expect(ARGON2_PROFILES.recovery.t).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("generator modes", () => {
+  it("random respects digits/symbols toggles", () => {
+    const withSym = generateByMode("random", { length: 24, digits: true, symbols: true });
+    expect(withSym.length).toBe(24);
+    const noSym = generateByMode("random", { length: 20, digits: true, symbols: false });
+    expect(noSym.length).toBe(20);
+    expect(/[!@#$%^&*_\-+=?]/.test(noSym)).toBe(false);
+  });
+
+  it("memorable has words and optional digit", () => {
+    const m = generateMemorablePassword({ words: 4, includeNumber: true });
+    expect(m.split("-").length).toBeGreaterThanOrEqual(4);
+    expect(/\d$/.test(m)).toBe(true);
+  });
+
+  it("pin is digits only", () => {
+    const pin = generatePin(6);
+    expect(pin).toMatch(/^\d{6}$/);
+    expect(generateByMode("pin", { length: 8 })).toMatch(/^\d{8}$/);
   });
 });

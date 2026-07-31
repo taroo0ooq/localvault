@@ -19,15 +19,20 @@ import {
   CheckCircle2,
   Fingerprint,
   Users,
+  Dices,
+  Lightbulb,
+  Hash,
 } from "lucide-react";
 import { VaultClient } from "@localvault/api-client";
 import {
   decryptItem,
   encryptItem,
   enrollVaultCrypto,
+  generateByMode,
   generatePassword,
   unlockWithPin,
   unlockWithRecovery,
+  type GeneratorMode,
   type VaultItemPlain,
   DEFAULT_POLICY,
 } from "@localvault/crypto";
@@ -96,8 +101,27 @@ export function App() {
   const [reveal, setReveal] = useState<Record<string, boolean>>({});
 
   // generator
+  const [genMode, setGenMode] = useState<GeneratorMode>("random");
   const [genLen, setGenLen] = useState(20);
-  const [genPw, setGenPw] = useState(() => generatePassword({ ...DEFAULT_POLICY, length: 20 }));
+  const [genWords, setGenWords] = useState(4);
+  const [genNumbers, setGenNumbers] = useState(true);
+  const [genSymbols, setGenSymbols] = useState(false);
+  const [genCopied, setGenCopied] = useState(false);
+  const refreshGenerated = useCallback(
+    (mode: GeneratorMode = genMode, length = genLen, words = genWords, digits = genNumbers, symbols = genSymbols) => {
+      if (mode === "memorable") {
+        return generateByMode("memorable", { words, digits });
+      }
+      if (mode === "pin") {
+        return generateByMode("pin", { length: Math.min(12, Math.max(4, length <= 12 ? length : 6)) });
+      }
+      return generateByMode("random", { length, digits, symbols });
+    },
+    [genMode, genLen, genWords, genNumbers, genSymbols],
+  );
+  const [genPw, setGenPw] = useState(() =>
+    generateByMode("random", { length: 20, digits: true, symbols: false }),
+  );
 
   // import
   const [importPreview, setImportPreview] = useState<
@@ -915,43 +939,214 @@ export function App() {
 
       {screen === "generator" && (
         <Panel title="Password generator" icon={<Sparkles className="size-5 text-primary" />}>
-          <div
-            data-testid="generated-password"
-            className="mb-3 break-all rounded-xl border border-border bg-bg px-4 py-4 font-mono text-sm"
-          >
-            {genPw}
-          </div>
-          <label className="mb-3 block text-sm text-muted">
-            Length: {genLen}
-            <input
-              type="range"
-              min={12}
-              max={48}
-              value={genLen}
-              onChange={(e) => {
-                const length = Number(e.target.value);
-                setGenLen(length);
-                setGenPw(generatePassword({ ...DEFAULT_POLICY, length }));
+          <section className="mb-5">
+            <h2 className="mb-2 text-sm font-medium text-fg">Choose password type</h2>
+            <div
+              role="tablist"
+              aria-label="Password type"
+              className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-bg p-1"
+            >
+              {(
+                [
+                  ["random", "Random", Dices],
+                  ["memorable", "Memorable", Lightbulb],
+                  ["pin", "PIN", Hash],
+                ] as const
+              ).map(([id, label, Icon]) => {
+                const active = genMode === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    data-testid={`gen-mode-${id}`}
+                    onClick={() => {
+                      setGenMode(id);
+                      setGenCopied(false);
+                      if (id === "pin" && genLen > 12) setGenLen(6);
+                      if (id === "random" && genLen < 8) setGenLen(20);
+                      setGenPw(
+                        refreshGenerated(
+                          id,
+                          id === "pin" ? (genLen > 12 ? 6 : Math.max(4, Math.min(12, genLen))) : genLen,
+                          genWords,
+                          genNumbers,
+                          genSymbols,
+                        ),
+                      );
+                    }}
+                    className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${
+                      active
+                        ? "bg-surface-2 text-fg shadow-sm ring-1 ring-border"
+                        : "text-muted hover:text-fg"
+                    }`}
+                  >
+                    <Icon className="size-3.5 shrink-0" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="mb-5">
+            <h2 className="mb-3 text-sm font-medium text-fg">Customize your new password</h2>
+
+            {genMode === "random" && (
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="text-muted">Characters</span>
+                    <span className="rounded-full border border-border bg-bg px-2.5 py-0.5 font-mono text-xs text-fg">
+                      {genLen}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={8}
+                    max={48}
+                    value={genLen}
+                    data-testid="gen-length"
+                    aria-label="Password length"
+                    onChange={(e) => {
+                      const length = Number(e.target.value);
+                      setGenLen(length);
+                      setGenCopied(false);
+                      setGenPw(refreshGenerated("random", length, genWords, genNumbers, genSymbols));
+                    }}
+                    className="w-full accent-primary"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-5">
+                  <Toggle
+                    label="Numbers"
+                    checked={genNumbers}
+                    testId="gen-numbers"
+                    onChange={(v) => {
+                      setGenNumbers(v);
+                      setGenCopied(false);
+                      setGenPw(refreshGenerated("random", genLen, genWords, v, genSymbols));
+                    }}
+                  />
+                  <Toggle
+                    label="Symbols"
+                    checked={genSymbols}
+                    testId="gen-symbols"
+                    onChange={(v) => {
+                      setGenSymbols(v);
+                      setGenCopied(false);
+                      setGenPw(refreshGenerated("random", genLen, genWords, genNumbers, v));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {genMode === "memorable" && (
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="text-muted">Words</span>
+                    <span className="rounded-full border border-border bg-bg px-2.5 py-0.5 font-mono text-xs text-fg">
+                      {genWords}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={3}
+                    max={8}
+                    value={genWords}
+                    data-testid="gen-words"
+                    aria-label="Word count"
+                    onChange={(e) => {
+                      const words = Number(e.target.value);
+                      setGenWords(words);
+                      setGenCopied(false);
+                      setGenPw(refreshGenerated("memorable", genLen, words, genNumbers, genSymbols));
+                    }}
+                    className="w-full accent-primary"
+                  />
+                </div>
+                <Toggle
+                  label="Numbers"
+                  checked={genNumbers}
+                  testId="gen-memorable-numbers"
+                  onChange={(v) => {
+                    setGenNumbers(v);
+                    setGenCopied(false);
+                    setGenPw(refreshGenerated("memorable", genLen, genWords, v, genSymbols));
+                  }}
+                />
+              </div>
+            )}
+
+            {genMode === "pin" && (
+              <div>
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="text-muted">Digits</span>
+                  <span className="rounded-full border border-border bg-bg px-2.5 py-0.5 font-mono text-xs text-fg">
+                    {Math.min(12, Math.max(4, genLen > 12 ? 6 : genLen))}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={4}
+                  max={12}
+                  value={genLen > 12 ? 6 : Math.max(4, Math.min(12, genLen))}
+                  data-testid="gen-pin-length"
+                  aria-label="PIN length"
+                  onChange={(e) => {
+                    const length = Number(e.target.value);
+                    setGenLen(length);
+                    setGenCopied(false);
+                    setGenPw(refreshGenerated("pin", length, genWords, genNumbers, genSymbols));
+                  }}
+                  className="w-full accent-primary"
+                />
+              </div>
+            )}
+          </section>
+
+          <section className="mb-4">
+            <h2 className="mb-2 text-sm font-medium text-fg">Generated password</h2>
+            <div
+              data-testid="generated-password"
+              className="break-all rounded-2xl border border-border bg-bg px-4 py-5 text-center font-mono text-base tracking-wide text-fg sm:text-lg"
+            >
+              {genPw}
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              data-testid="gen-copy"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-fg"
+              onClick={() => {
+                void navigator.clipboard.writeText(genPw).then(() => {
+                  setGenCopied(true);
+                  setTimeout(() => setGenCopied(false), 1600);
+                });
               }}
-              className="mt-2 w-full"
-            />
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm"
-              onClick={() => setGenPw(generatePassword({ ...DEFAULT_POLICY, length: genLen }))}
             >
-              <RefreshCw className="size-4" /> Regenerate
+              <Copy className="size-4" />
+              {genCopied ? "Copied" : "Copy password"}
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-fg"
-              onClick={() => void navigator.clipboard.writeText(genPw)}
+              data-testid="gen-refresh"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm font-semibold text-fg"
+              onClick={() => {
+                setGenCopied(false);
+                setGenPw(refreshGenerated());
+              }}
             >
-              <Copy className="size-4" /> Copy
+              <RefreshCw className="size-4" />
+              Refresh password
             </button>
           </div>
+
           <button
             type="button"
             className="mt-4 text-sm text-accent"
@@ -1074,6 +1269,40 @@ function IconBtn({
     >
       {children}
     </button>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+  testId,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  testId?: string;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2.5 text-sm font-medium text-fg">
+      <span>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        data-testid={testId}
+        onClick={() => onChange(!checked)}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+          checked ? "bg-primary" : "bg-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-6 rounded-full bg-fg shadow transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+    </label>
   );
 }
 
